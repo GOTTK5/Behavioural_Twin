@@ -43,3 +43,11 @@ test('date validation and arithmetic', () => {
   assert.ok(d.isValidTimezone('Europe/London'));
   assert.ok(!d.isValidTimezone('Mars/Base'));
 });
+
+test('Sunday is inside its week: before midnight the week is not processed yet, right after it is', () => {
+  const sunNight = new Date('2026-11-22T18:25:00Z'); // Sun 23:55 IST
+  const monEarly = new Date('2026-11-22T18:35:00Z'); // Mon 00:05 IST
+  assert.equal(d.getLastCompletedWeekRange('Asia/Kolkata', sunNight).weekYear, '2026-W46');
+  assert.deepEqual(d.getLastCompletedWeekRange('Asia/Kolkata', monEarly),
+    { startDate: '2026-11-16', endDate: '2026-11-22', weekYear: '2026-W47' }); // ends on that Sunday
+});

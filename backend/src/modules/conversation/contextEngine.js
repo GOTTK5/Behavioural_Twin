@@ -1,5 +1,6 @@
 const { DailySummary, WeeklySummary, BehavioralKnowledge, Episode } = require('../../models/Intelligence');
 const { searchMemories } = require('../memory/vectorStore');
+const { currentPatternFilter } = require('../processing/correlation');
 
 // Gathers everything Twin needs to answer one message:
 // recent structured data from MongoDB + semantically relevant memories.
@@ -9,7 +10,7 @@ async function buildContext(user, userQuery, today) {
   const [latestWeek, recentDailies, knowledgePatterns, activeEpisodes, memories] = await Promise.all([
     WeeklySummary.findOne({ userId }).sort({ weekYear: -1 }).lean(),
     DailySummary.find({ userId }).sort({ date: -1 }).limit(7).lean(),
-    BehavioralKnowledge.find({ userId }).sort({ confidenceRank: -1, observedWeeks: -1 }).limit(5).lean(),
+    BehavioralKnowledge.find({ userId, ...currentPatternFilter(today) }).sort({ confidenceRank: -1, observedWeeks: -1 }).limit(5).lean(),
     Episode.find({ userId, resolved: false }).sort({ startDate: -1 }).limit(3).lean(),
     searchMemories(userId, userQuery)
   ]);

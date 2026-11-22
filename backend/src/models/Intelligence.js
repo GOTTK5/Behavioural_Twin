@@ -45,6 +45,7 @@ const weeklySummarySchema = new mongoose.Schema({
     anxietyScore:     { type: Number }
   },
   dominantSignals: [{ type: String }],
+  stale:           { type: Boolean, default: false }, // a day in this week changed after processing
   createdAt:       { type: Date, default: Date.now }
 });
 weeklySummarySchema.index({ userId: 1, weekYear: 1 }, { unique: true });

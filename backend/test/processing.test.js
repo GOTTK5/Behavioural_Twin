@@ -72,3 +72,18 @@ test('trend direction (newest first); screen time lower is better', () => {
   assert.match(getTrendLine(dailies, 'moodScore', 1, 'Mood'), /rising \(improving\)/);
   assert.match(getTrendLine(dailies, 'screenTimeHours', 1, 'Screen time', true), /rising \(declining\)/);
 });
+
+test('anxiety (weekly test, carried forward) is never more than low confidence', () => {
+  const summaries = Array.from({ length: 28 }, (_, i) => {
+    const week = Math.floor(i / 7);
+    return { metrics: { anxietyScore: [3, 8, 14, 18][week], moodScore: [8, 6, 4, 2][week] + (i % 2) } };
+  });
+  const r = computeCorrelations(summaries).find(x => x.metricA === 'anxietyScore' && x.metricB === 'moodScore');
+  assert.ok(r, 'strong anxiety/mood link should still be reported');
+  assert.equal(r.confidence, 'low');
+});
+
+test('a metric with almost no variation is ignored', () => {
+  const summaries = Array.from({ length: 14 }, (_, i) => ({ metrics: { sleepHours: i % 2 ? 7 : 8, moodScore: i % 2 ? 4 : 6 } }));
+  assert.equal(computeCorrelations(summaries).find(x => x.metricA === 'sleepHours' && x.metricB === 'moodScore'), undefined);
+});

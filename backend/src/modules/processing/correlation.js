@@ -31,7 +31,12 @@ function describePattern(label, correlation) {
   return `Higher ${nameA} is associated with ${relation} ${nameB} (r=${correlation.toFixed(2)})`;
 }
 
-function confidenceFor(absR, n) {
+// GAD-7 is taken once a week and carried forward for 7 days, so its daily values
+// are not independent points. Correlations involving it are capped at 'low'.
+const WEEKLY_METRICS = new Set(['anxietyScore']);
+
+function confidenceFor(absR, n, metricA, metricB) {
+  if (WEEKLY_METRICS.has(metricA) || WEEKLY_METRICS.has(metricB)) return 'low';
   if (absR >= 0.7 && n >= 14) return 'high';
   if (absR >= 0.55) return 'medium';
   return 'low';
@@ -48,13 +53,13 @@ function computeCorrelations(summaries) {
 
     const xs = pairs.map(p => p[0]);
     const ys = pairs.map(p => p[1]);
-    if (new Set(xs).size < 2 || new Set(ys).size < 2) continue; // no variance
+    if (new Set(xs).size < 3 || new Set(ys).size < 3) continue; // too little variation to mean anything
 
     let r;
     try { r = ss.sampleCorrelation(xs, ys); } catch { continue; }
     if (!Number.isFinite(r) || Math.abs(r) < MIN_ABS_R) continue;
 
-    const confidence = confidenceFor(Math.abs(r), pairs.length);
+    const confidence = confidenceFor(Math.abs(r), pairs.length, metricA, metricB);
     results.push({ metricA, metricB, correlation: r, confidence, sampleSize: pairs.length, pattern: describePattern(label, r) });
   }
   return results;
@@ -101,4 +106,10 @@ async function updateKnowledgeTable(userId, correlationResults, weekYear, startD
   }
 }
 
-module.exports = { runCorrelationEngine, updateKnowledgeTable, computeCorrelations, describePattern };
+// A pattern is "current" if it was re-confirmed in a recent weekly run.
+const CURRENT_PATTERN_DAYS = 35;
+function currentPatternFilter(today) {
+  return { lastSeen: { $gte: new Date(`${addDays(today, -CURRENT_PATTERN_DAYS)}T00:00:00Z`) } };
+}
+
+module.exports = { runCorrelationEngine, updateKnowledgeTable, computeCorrelations, describePattern, currentPatternFilter };

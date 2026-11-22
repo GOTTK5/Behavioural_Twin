@@ -70,7 +70,7 @@ export default function Insights() {
         <div className="stat-tile">
           <div className="stat-label">High confidence</div>
           <div className="stat-value" style={{ color: 'var(--success)' }}>
-            {patterns.filter(p => p.confidence === 'high').length}
+            {patterns.filter(p => p.confidence === 'high' && !(p.lastSeen && Date.now() - new Date(p.lastSeen) > 35 * 86400000)).length}
           </div>
         </div>
       </div>
@@ -102,10 +102,15 @@ export default function Insights() {
               </div>
             </div>
           )}
-          {patterns.map((p, i) => (
-            <div key={i} className="pattern-card" style={{ marginBottom: 12 }}>
+          {patterns.map((p, i) => {
+            const faded = p.lastSeen && Date.now() - new Date(p.lastSeen) > 35 * 86400000;
+            return (
+            <div key={i} className="pattern-card" style={{ marginBottom: 12, opacity: faded ? 0.55 : 1 }}>
               <div className="flex-between">
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{p.pattern}</div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>
+                  {p.pattern}
+                  {faded && <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}> · not seen in the last 5 weeks</span>}
+                </div>
                 <span className={`confidence-badge confidence-${p.confidence}`}>{p.confidence}</span>
               </div>
               <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 12, color: 'var(--text2)' }}>
@@ -118,7 +123,8 @@ export default function Insights() {
                 Last updated: {p.lastSeen ? new Date(p.lastSeen).toLocaleDateString() : '—'}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

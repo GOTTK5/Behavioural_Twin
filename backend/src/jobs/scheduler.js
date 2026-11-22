@@ -5,17 +5,23 @@ const { runWeeklyBatchForUser } = require('../modules/processing/weeklyBatch');
 const { syncDay } = require('../services/googleFit');
 const { config } = require('../config/env');
 const { DailySummary, WeeklySummary } = require('../models/Intelligence');
-const { getLocalDateString, getLocalHour, addDays, getLastCompletedWeekRange } = require('../utils/dateUtils');
+const { getLocalDateString, getLocalHour, addDays, getLastCompletedWeekRange, getWeekRange } = require('../utils/dateUtils');
 
-// True when the user's last completed week has data but was never processed
-// (e.g. the server was asleep or down on Monday morning).
+// Returns the week to process next, or null:
+//   1. the last completed week, if it has data but was never processed
+//      (e.g. the server was asleep or down on Monday morning), else
+//   2. an already-processed past week marked stale because a day in it was edited.
 async function weeklyBatchDue(user, now) {
   const range = getLastCompletedWeekRange(user.timezone || config.defaultTimezone, now);
   const [processed, hasData] = await Promise.all([
     WeeklySummary.exists({ userId: user._id, weekYear: range.weekYear }),
     DailySummary.exists({ userId: user._id, date: { $gte: range.startDate, $lte: range.endDate } })
   ]);
-  return hasData && !processed ? range : null;
+  if (hasData && !processed) return range;
+
+  const stale = await WeeklySummary.findOne({ userId: user._id, stale: true, endDate: { $lte: range.endDate } })
+    .sort({ weekYear: 1 }).select('startDate').lean();
+  return stale ? getWeekRange(stale.startDate) : null;
 }
 
 // Runs every hour and acts per user, in THEIR timezone:
@@ -74,4 +80,4 @@ function startCronJobs() {
   console.log('[cron] scheduled hourly — daily finalize after local midnight, weekly batch once each week ends (each user\'s timezone)');
 }
 
-module.exports = { startCronJobs, hourlyTick };
+module.exports = { startCronJobs, hourlyTick, weeklyBatchDue };

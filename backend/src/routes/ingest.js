@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { protect } = require('../middleware/auth');
 const { Mood, Journal, Task, HealthLog, PsychTest } = require('../models/Inputs');
+const { WeeklySummary } = require('../models/Intelligence');
 const User = require('../models/User');
 const { generateDailySummary } = require('../modules/processing/dailySummary');
 const { HttpError, asyncHandler, optionalNumber, requiredString, optionalString, clampInt } = require('../utils/http');
@@ -16,6 +17,8 @@ router.use(protect);
 async function refreshSummary(userId, date) {
   try {
     await generateDailySummary(userId, date);
+    // If this day's week was already analysed, mark it for re-processing.
+    await WeeklySummary.updateOne({ userId, weekYear: getWeekYear(date) }, { stale: true });
   } catch (err) {
     console.error('[ingest] daily summary refresh failed:', err.message);
   }

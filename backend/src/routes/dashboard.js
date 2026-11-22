@@ -5,6 +5,7 @@ const { DailySummary, WeeklySummary, BehavioralKnowledge, Episode } = require('.
 const { Mood, Journal, Task, HealthLog, PsychTest } = require('../models/Inputs');
 const { runWeeklyBatchForUser } = require('../modules/processing/weeklyBatch');
 const { generateDailySummary } = require('../modules/processing/dailySummary');
+const { currentPatternFilter } = require('../modules/processing/correlation');
 const { asyncHandler, clampInt } = require('../utils/http');
 const { userToday } = require('../utils/userDate');
 const { addDays, getWeekYear } = require('../utils/dateUtils');
@@ -21,7 +22,7 @@ router.get('/overview', asyncHandler(async (req, res) => {
   const [dailies, latestWeek, patterns, activeEpisodes, todayTasks] = await Promise.all([
     DailySummary.find({ userId, date: { $gte: addDays(today, -(days - 1)), $lte: today } }).sort({ date: 1 }).lean(),
     WeeklySummary.findOne({ userId }).sort({ weekYear: -1 }).lean(),
-    BehavioralKnowledge.find({ userId, confidence: { $in: ['medium', 'high'] } })
+    BehavioralKnowledge.find({ userId, confidence: { $in: ['medium', 'high'] }, ...currentPatternFilter(today) })
       .sort({ confidenceRank: -1, observedWeeks: -1 }).limit(5).lean(),
     Episode.find({ userId, resolved: false }).sort({ startDate: -1 }).lean(),
     Task.find({ userId, date: today }).lean()

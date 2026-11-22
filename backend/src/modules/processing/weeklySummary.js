@@ -59,7 +59,7 @@ async function generateWeeklySummary(userId, weekYear, startDate, endDate) {
 
   return WeeklySummary.findOneAndUpdate(
     { userId, weekYear },
-    { startDate, endDate, summary: lines.join(' '), averages, changes, dominantSignals },
+    { startDate, endDate, summary: lines.join(' '), averages, changes, dominantSignals, stale: false },
     { upsert: true, new: true }
   );
 }
