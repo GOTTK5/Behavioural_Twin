@@ -1,0 +1,18 @@
+{
+  "name": "behavioral-twin",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Twin — personal behavioral AI (single deployable app: Express API + React UI)",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "install:all": "npm ci --prefix backend && npm ci --prefix frontend",
+    "build": "npm run install:all && npm run build --prefix frontend",
+    "start": "npm start --prefix backend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm start --prefix frontend",
+    "test": "npm test --prefix backend",
+    "seed": "npm run seed --prefix backend"
+  }
+}

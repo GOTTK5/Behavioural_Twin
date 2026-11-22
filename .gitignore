@@ -1,9 +1,12 @@
 node_modules/
 .env
+.env.*
+!.env.example
 *.log
 build/
 dist/
+coverage/
 .DS_Store
+Thumbs.db
 *.zip
 mongo-exports/
-chroma/

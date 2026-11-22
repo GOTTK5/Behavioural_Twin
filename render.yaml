@@ -1,0 +1,19 @@
+# One-click deploy on Render (https://render.com) — free web service.
+# Fill in MONGO_URI and GEMINI_API_KEY in the Render dashboard after creating it.
+services:
+  - type: web
+    name: behavioral-twin
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGO_URI
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
