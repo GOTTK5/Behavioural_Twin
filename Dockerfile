@@ -1,13 +1,13 @@
 # Single image: builds the React app, then runs the Express API which also serves it.
 
-FROM node:20-alpine AS frontend
+FROM node:22-alpine AS frontend
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM node:20-alpine
+FROM node:22-alpine
 ENV NODE_ENV=production
 WORKDIR /app/backend
 COPY backend/package*.json ./

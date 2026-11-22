@@ -41,7 +41,7 @@ Everything is stored in **MongoDB only** — no separate vector database to host
 
 ## Quick start (local)
 
-**Requirements:** Node.js 18+, MongoDB (local install or a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster), and a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
+**Requirements:** Node.js 22, MongoDB (local install or a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster), and a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
 
 ```bash
 # 1. Install

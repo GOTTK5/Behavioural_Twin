@@ -4,7 +4,7 @@
   "private": true,
   "description": "Twin — personal behavioral AI (single deployable app: Express API + React UI)",
   "engines": {
-    "node": ">=18"
+    "node": "22.x"
   },
   "scripts": {
     "install:all": "npm ci --prefix backend && npm ci --prefix frontend",
