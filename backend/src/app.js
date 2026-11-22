@@ -6,6 +6,8 @@ const helmet = require('helmet');
 const mongoose = require('mongoose');
 const { config } = require('./config/env');
 const { HttpError } = require('./utils/http');
+const { getDbError } = require('./config/db');
+const { isConfigured: isAIConfigured } = require('./modules/ai/gemini');
 
 function createApp() {
   const app = express();
@@ -19,7 +21,18 @@ function createApp() {
 
   app.get('/api/health', (req, res) => {
     const dbUp = mongoose.connection.readyState === 1;
-    res.status(dbUp ? 200 : 503).json({ status: dbUp ? 'ok' : 'degraded', db: dbUp ? 'connected' : 'disconnected' });
+    res.json({
+      status: dbUp ? 'ok' : 'degraded',
+      db: dbUp ? 'connected' : 'disconnected',
+      ...(dbUp ? {} : { dbError: getDbError() || 'connecting...' }),
+      ai: isAIConfigured() ? 'configured' : 'missing GEMINI_API_KEY'
+    });
+  });
+
+  // While the database is down, fail API calls fast with a clear message.
+  app.use('/api', (req, res, next) => {
+    if (mongoose.connection.readyState === 1) return next();
+    res.status(503).json({ error: 'Database is not connected yet — please try again shortly.' });
   });
 
   app.use('/api/auth',      require('./routes/auth'));
