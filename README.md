@@ -51,7 +51,8 @@ npm run install:all
 cp backend/.env.example backend/.env
 #    then edit backend/.env: MONGO_URI, JWT_SECRET, GEMINI_API_KEY
 
-# 3. (optional) Demo data: 35 days for test@twin.ai / password123
+# 3. (optional) Demo data: creates test@twin.ai / password123 with 35 days of entries
+#    in the database MONGO_URI points to. The account does not exist until you run this.
 npm run seed
 
 # 4. Run — two terminals
