@@ -43,3 +43,22 @@ test('plain-language errors', () => {
   assert.match(gemini.describeError(Object.assign(new Error('API key not valid'), { status: 400 })), /invalid/);
   assert.match(gemini.describeError(Object.assign(new Error('x'), { status: 429 })), /quota/);
 });
+
+test('retries on 503 and falls back to another model when one stays overloaded', async () => {
+  process.env.GEMINI_MODEL = 'gemini-busy';
+  delete require.cache[require.resolve('../src/modules/ai/gemini')];
+  const g = require('../src/modules/ai/gemini');
+  let busyCalls = 0;
+  global.fetch = async (url) => {
+    const json = (status, body) => ({ ok: status < 300, status, json: async () => body, text: async () => JSON.stringify(body) });
+    if (url.includes('gemini-busy:generateContent')) { busyCalls++; return json(503, { error: { message: 'high demand' } }); }
+    if (url.includes('/models?')) return json(200, { models: [
+      { name: 'models/gemini-busy', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-9.0-flash-lite', supportedGenerationMethods: ['generateContent'] }
+    ] });
+    if (url.includes('gemini-9.0-flash-lite:generateContent')) return json(200, { candidates: [{ content: { parts: [{ text: 'Backup answer' }] } }] });
+    return json(500, {});
+  };
+  assert.equal(await g.generateChat({ systemPrompt: 's', message: 'hi' }), 'Backup answer');
+  assert.equal(busyCalls, 3); // 1 try + 2 retries
+});

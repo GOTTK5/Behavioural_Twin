@@ -17,7 +17,22 @@ function isConfigured() {
   return Boolean(config.gemini.apiKey);
 }
 
-async function request(method, path, body) {
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const isOverloaded = (err) => err.status === 503 || err.status === 500 || err.status === 502;
+
+// Retries briefly when Google is overloaded (503) — usually clears in seconds.
+async function request(method, path, body, retries = 2) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await requestOnce(method, path, body);
+    } catch (err) {
+      if (!isOverloaded(err) || attempt >= retries) throw err;
+      await sleep(1000 * 2 ** attempt + Math.random() * 500);
+    }
+  }
+}
+
+async function requestOnce(method, path, body) {
   if (!isConfigured()) throw new AIUnavailableError('GEMINI_API_KEY is not configured');
 
   const res = await fetch(`${BASE_URL}/${path}`, {
@@ -80,13 +95,31 @@ function rankEmbeddingModels(models) {
 
 const active = { chat: null, embedding: null };
 
-// Calls fn(model); on "model not found" switches to the next available model once.
+// Calls fn(model).
+//  • model not found (retired) → switch permanently to the best available model
+//  • model overloaded (503) even after retries → answer this one request with
+//    another available model, but keep the preferred one for next time
 async function withModel(kind, fn) {
   const configured = kind === 'chat' ? config.gemini.chatModel : config.gemini.embeddingModel;
   const current = active[kind] || configured;
   try {
     return await fn(current);
   } catch (err) {
+    if (isOverloaded(err)) {
+      const ranked = await listModels()
+        .then(models => (kind === 'chat' ? rankChatModels(models) : rankEmbeddingModels(models)))
+        .catch(() => []);
+      for (const alt of ranked.filter(n => n !== current).slice(0, 2)) {
+        try {
+          const result = await fn(alt);
+          console.warn(`[gemini] "${current}" overloaded — answered with "${alt}"`);
+          return result;
+        } catch (altErr) {
+          if (!isOverloaded(altErr) && altErr.status !== 404) throw altErr;
+        }
+      }
+      throw err;
+    }
     if (err.status !== 404 && err.status !== 400) throw err;
     if (err.status === 400 && !/model|not supported|not found/i.test(err.message)) throw err;
 
@@ -154,6 +187,7 @@ function describeError(err) {
   if (err.status === 400 && /API key not valid|API_KEY_INVALID/i.test(err.message)) return 'GEMINI_API_KEY is invalid — create a new key in Google AI Studio';
   if (err.status === 403) return 'The Gemini key is not allowed to use this API (check the key / project in Google AI Studio)';
   if (err.status === 404) return 'No usable Gemini model found for this key';
+  if (isOverloaded(err)) return 'Google\'s AI servers are busy right now — please try again in a minute';
   if (err.status === 429) return 'Gemini free-tier quota reached — wait a minute (or a day if the daily limit is used up)';
   if (err.name === 'TimeoutError') return 'Gemini did not answer in time';
   return err.message.slice(0, 200);

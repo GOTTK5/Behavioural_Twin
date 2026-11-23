@@ -45,6 +45,7 @@ router.post('/', chatLimiter, asyncHandler(async (req, res) => {
   } catch (err) {
     if (err instanceof AIUnavailableError) throw new HttpError(503, 'Twin is not configured yet — the server is missing GEMINI_API_KEY.');
     if (err.status === 429) throw new HttpError(429, 'The free AI quota is used up for now — please try again in a minute.');
+    if ([500, 502, 503].includes(err.status)) throw new HttpError(503, 'Google\'s AI servers are busy right now — please try again in a minute.');
     console.error('[chat] LLM error:', err.message);
     throw new HttpError(502, `Twin could not answer: ${describeError(err)}`);
   }
