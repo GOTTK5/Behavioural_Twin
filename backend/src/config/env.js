@@ -29,7 +29,7 @@ const config = {
 
   gemini: {
     get apiKey()         { return process.env.GEMINI_API_KEY || ''; },
-    get chatModel()      { return process.env.GEMINI_MODEL || 'gemini-2.5-flash'; },
+    get chatModel()      { return process.env.GEMINI_MODEL || 'gemini-flash-latest'; },
     get embeddingModel() { return process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001'; }
   },
 

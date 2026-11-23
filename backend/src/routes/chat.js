@@ -3,7 +3,7 @@ const rateLimit = require('express-rate-limit');
 const { protect } = require('../middleware/auth');
 const { buildContext } = require('../modules/conversation/contextEngine');
 const { callLLM } = require('../modules/conversation/llmCall');
-const { AIUnavailableError } = require('../modules/ai/gemini');
+const { AIUnavailableError, describeError } = require('../modules/ai/gemini');
 const ChatMessage = require('../models/ChatMessage');
 const { HttpError, asyncHandler, requiredString } = require('../utils/http');
 const { userToday } = require('../utils/userDate');
@@ -46,7 +46,7 @@ router.post('/', chatLimiter, asyncHandler(async (req, res) => {
     if (err instanceof AIUnavailableError) throw new HttpError(503, 'Twin is not configured yet — the server is missing GEMINI_API_KEY.');
     if (err.status === 429) throw new HttpError(429, 'The free AI quota is used up for now — please try again in a minute.');
     console.error('[chat] LLM error:', err.message);
-    throw new HttpError(502, 'Twin could not answer right now — please try again.');
+    throw new HttpError(502, `Twin could not answer: ${describeError(err)}`);
   }
 
   await ChatMessage.insertMany([

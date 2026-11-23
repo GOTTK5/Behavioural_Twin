@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 const { config } = require('./config/env');
 const { HttpError } = require('./utils/http');
 const { getDbError } = require('./config/db');
-const { isConfigured: isAIConfigured } = require('./modules/ai/gemini');
+const { isConfigured: isAIConfigured, checkAI } = require('./modules/ai/gemini');
 
 function createApp() {
   const app = express();
@@ -19,9 +19,12 @@ function createApp() {
   }
   app.use(express.json({ limit: '100kb' }));
 
-  app.get('/api/health', (req, res) => {
+  app.get('/api/health', async (req, res) => {
     const dbUp = mongoose.connection.readyState === 1;
+    // /api/health?ai=check makes one tiny real Gemini call to verify chat works
+    const aiCheck = req.query.ai === 'check' ? { aiCheck: await checkAI() } : {};
     res.json({
+      ...aiCheck,
       status: dbUp ? 'ok' : 'degraded',
       db: dbUp ? 'connected' : 'disconnected',
       ...(dbUp ? {} : { dbError: getDbError() || 'connecting...' }),
