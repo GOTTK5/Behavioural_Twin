@@ -21,8 +21,30 @@ function explain(err) {
   return msg;
 }
 
+// TEMPORARY deploy diagnostics: what the server actually received in MONGO_URI,
+// without ever revealing the password. Shown on /api/health only while disconnected.
+function describeUri(raw) {
+  const uri = raw || '';
+  const m = uri.trim().match(/^(mongodb(?:\+srv)?):\/\/([^:@/]*)(?::([^@]*))?@([^/?]+)(\/[^?]*)?(\?.*)?$/);
+  if (!m) return { parsed: false, startsWith: uri.slice(0, 14), length: uri.length };
+  const [, scheme, user, password = '', host, path = '', query = ''] = m;
+  return {
+    scheme,
+    user,
+    host,
+    database: path.replace('/', '') || '(none → "test")',
+    hasOptions: Boolean(query),
+    passwordLength: password.length,
+    passwordHasAngleBrackets: /[<>]/.test(password),
+    passwordHasSpecialChars: /[^A-Za-z0-9]/.test(password),
+    valueHasOuterSpaces: uri !== uri.trim(),
+    valueHasQuotes: /^["']|["']$/.test(uri.trim())
+  };
+}
+
 let lastError = null;
 const getDbError = () => lastError;
+const getUriDiagnostics = () => describeUri(config.mongoUri);
 
 // Connects in the background and keeps retrying, so the web server stays up
 // and /api/health can report what is wrong instead of the app crashing.
@@ -42,4 +64,4 @@ function connectMongo(onConnected) {
   attempt();
 }
 
-module.exports = { connectMongo, getDbError };
+module.exports = { connectMongo, getDbError, getUriDiagnostics };

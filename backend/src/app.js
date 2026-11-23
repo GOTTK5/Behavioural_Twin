@@ -6,7 +6,7 @@ const helmet = require('helmet');
 const mongoose = require('mongoose');
 const { config } = require('./config/env');
 const { HttpError } = require('./utils/http');
-const { getDbError } = require('./config/db');
+const { getDbError, getUriDiagnostics } = require('./config/db');
 const { isConfigured: isAIConfigured } = require('./modules/ai/gemini');
 
 function createApp() {
@@ -24,7 +24,7 @@ function createApp() {
     res.json({
       status: dbUp ? 'ok' : 'degraded',
       db: dbUp ? 'connected' : 'disconnected',
-      ...(dbUp ? {} : { dbError: getDbError() || 'connecting...' }),
+      ...(dbUp ? {} : { dbError: getDbError() || 'connecting...', mongoUriCheck: getUriDiagnostics() }),
       ai: isAIConfigured() ? 'configured' : 'missing GEMINI_API_KEY'
     });
   });
