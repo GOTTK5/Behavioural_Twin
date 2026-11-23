@@ -6,6 +6,7 @@ import Twin from './pages/Twin';
 import Insights from './pages/Insights';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
+import ResetPassword from './pages/ResetPassword';
 import { getToken, setToken as saveToken, clearToken } from './services/api';
 import './App.css';
 
@@ -19,8 +20,9 @@ const NAV = [
 
 export default function App() {
   const [token, setToken] = useState(getToken());
+  const [resetting, setResetting] = useState(window.location.pathname === '/reset-password');
 
-  const login = (t) => { saveToken(t); setToken(t); };
+  const login = (t) => { saveToken(t); setToken(t); setResetting(false); };
   const logout = () => { clearToken(); setToken(null); };
 
   useEffect(() => {
@@ -29,6 +31,8 @@ export default function App() {
     return () => window.removeEventListener('twin:logout', onLogout);
   }, []);
 
+  // The emailed reset link works whether or not someone is signed in on this device.
+  if (resetting) return <ResetPassword onLogin={login} />;
   if (!token) return <Login onLogin={login} />;
 
   return (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api, { errorMessage } from '../services/api';
+import api, { errorMessage, setToken } from '../services/api';
 
 const TIMEZONES = (() => {
   try { return Intl.supportedValuesOf('timeZone'); } catch {
@@ -14,6 +14,7 @@ export default function Profile({ onLogout }) {
   const [status,   setStatus]   = useState({});   // { key: { ok, text } }
   const [busy,     setBusy]     = useState({});
   const [deletePw, setDeletePw] = useState('');
+  const [pw,       setPw]       = useState({ current: '', next: '', confirm: '' });
 
   const show = (key, ok, text) => setStatus(s => ({ ...s, [key]: { ok, text } }));
 
@@ -66,6 +67,15 @@ export default function Profile({ onLogout }) {
     });
     setUser(data.user);
     show('profile', true, '✓ Saved');
+  });
+
+  const changePassword = () => act('password', async () => {
+    if (pw.next.length < 8) return show('password', false, 'New password must be at least 8 characters');
+    if (pw.next !== pw.confirm) return show('password', false, 'The two new passwords do not match');
+    const { data } = await api.put('/auth/password', { currentPassword: pw.current, newPassword: pw.next });
+    setToken(data.token); // keep this device signed in
+    setPw({ current: '', next: '', confirm: '' });
+    show('password', true, `✓ ${data.message}`);
   });
 
   const connectGoogle = () => act('google', async () => {
@@ -193,6 +203,28 @@ export default function Profile({ onLogout }) {
               <button className="btn btn-secondary" onClick={onLogout}>Sign out</button>
             </div>
             <Status k="export" />
+          </div>
+
+          <div className="card">
+            <div className="card-title">Change password</div>
+            <div className="form-group">
+              <label>Current password</label>
+              <input type="password" autoComplete="current-password" value={pw.current} onChange={e => setPw(p => ({ ...p, current: e.target.value }))} />
+            </div>
+            <div className="grid-2">
+              <div className="form-group">
+                <label>New password</label>
+                <input type="password" autoComplete="new-password" placeholder="At least 8 characters" value={pw.next} onChange={e => setPw(p => ({ ...p, next: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label>Confirm new</label>
+                <input type="password" autoComplete="new-password" value={pw.confirm} onChange={e => setPw(p => ({ ...p, confirm: e.target.value }))} />
+              </div>
+            </div>
+            <button className="btn btn-secondary btn-sm" onClick={changePassword} disabled={busy.password || !pw.current || !pw.next}>
+              {busy.password ? 'Saving...' : 'Change password'}
+            </button>
+            <Status k="password" />
           </div>
 
           <div className="card">

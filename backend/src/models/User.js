@@ -17,6 +17,12 @@ const userSchema = new mongoose.Schema({
   googleRefreshToken: { type: String, select: false },
   googleConnected:    { type: Boolean, default: false },
 
+  // Password reset (only a hash of the emailed token is stored)
+  passwordResetTokenHash: { type: String, select: false },
+  passwordResetExpires:   { type: Date, select: false },
+  // Sessions (JWTs) issued before this moment are rejected — set on password change/reset
+  passwordChangedAt:      { type: Date },
+
   lastPsychTestDate: { type: Date },
   createdAt:         { type: Date, default: Date.now }
 });
@@ -24,8 +30,15 @@ const userSchema = new mongoose.Schema({
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 10);
+  if (!this.isNew) this.passwordChangedAt = new Date();
   next();
 });
+
+// True if a session token was issued before the last password change.
+userSchema.methods.tokenIssuedBeforePasswordChange = function (iatSeconds) {
+  if (!this.passwordChangedAt) return false;
+  return iatSeconds * 1000 < this.passwordChangedAt.getTime() - 1000;
+};
 
 userSchema.methods.matchPassword = function (entered) {
   if (!this.password || typeof entered !== 'string') return false;

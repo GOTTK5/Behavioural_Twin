@@ -28,7 +28,8 @@ function createApp() {
       status: dbUp ? 'ok' : 'degraded',
       db: dbUp ? 'connected' : 'disconnected',
       ...(dbUp ? {} : { dbError: getDbError() || 'connecting...' }),
-      ai: isAIConfigured() ? 'configured' : 'missing GEMINI_API_KEY'
+      ai: isAIConfigured() ? 'configured' : 'missing GEMINI_API_KEY',
+      email: config.email.enabled ? 'configured' : 'not configured (password reset emails disabled)'
     });
   });
 

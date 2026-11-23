@@ -21,7 +21,8 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(
   res => res,
   err => {
-    const isLoginCall = err.config?.url?.startsWith('/auth/login') || err.config?.url?.startsWith('/auth/register');
+    const PUBLIC = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
+    const isLoginCall = PUBLIC.some(p => err.config?.url?.startsWith(p));
     if (err.response?.status === 401 && !isLoginCall) {
       clearToken();
       window.dispatchEvent(new Event('twin:logout'));

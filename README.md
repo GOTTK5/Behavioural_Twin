@@ -88,6 +88,21 @@ See [`backend/.env.example`](backend/.env.example). Required: `MONGO_URI`, `JWT_
 
 ---
 
+## Password reset email
+
+"Forgot password?" emails a single-use link that expires in 30 minutes. Changing or resetting a password signs out every other device.
+
+Email is sent through [Brevo](https://www.brevo.com)'s HTTPS API (free: 300 emails/day). Normal SMTP (e.g. Gmail) does not work on Render's free tier, which blocks SMTP ports.
+
+1. Create a free Brevo account.
+2. **Senders, Domains & Dedicated IPs → Senders → Add a sender** with your email and confirm it from your inbox.
+3. **SMTP & API → API Keys → Generate a new API key**.
+4. Set `BREVO_API_KEY` and `EMAIL_FROM` (the verified sender) in your environment.
+
+Without these, the reset link is printed in the backend console during local development. `/api/health` shows whether email is configured.
+
+---
+
 ## Google Fit (optional)
 
 1. In [Google Cloud Console](https://console.cloud.google.com), create a project and enable the **Fitness API**.
@@ -106,6 +121,8 @@ All endpoints except register/login need `Authorization: Bearer <token>`. Dates 
 | Method | Endpoint | Description |
 |---|---|---|
 | POST | `/api/auth/register` · `/api/auth/login` | Create account / sign in |
+| POST | `/api/auth/forgot-password` · `/api/auth/reset-password` | Email a reset link / set a new password with it |
+| PUT | `/api/auth/password` | Change password while signed in |
 | GET · PUT | `/api/auth/me` · `/api/auth/profile` | Current user / update profile & timezone |
 | GET | `/api/auth/export` | Download all your data (JSON) |
 | DELETE | `/api/auth/account` | Delete account and all data (body: `password`) |
@@ -152,5 +169,5 @@ frontend/                      React app (Dashboard, Daily Log, Twin, Insights, 
 
 ## Roadmap
 
-- **Next:** password reset by email, reminders to log, PDF weekly reports, journal sentiment analysis.
+- **Next:** email reminders to log, PDF weekly reports, journal sentiment analysis.
 - **Later:** behavioral predictions, mobile app (Health Connect / HealthKit instead of Google Fit), richer personalization.

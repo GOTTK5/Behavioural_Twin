@@ -7,6 +7,8 @@ const { config } = require('../config/env');
 const { HttpError, asyncHandler, optionalNumber, requiredString } = require('../utils/http');
 const { isValidTimezone } = require('../utils/dateUtils');
 const { deleteAllUserData, exportUserData } = require('../services/accountService');
+const { sendEmail, passwordResetEmail } = require('../services/email');
+const { createOneTimeToken, hashToken } = require('../utils/tokens');
 
 const router = express.Router();
 
@@ -18,7 +20,26 @@ const authLimiter = rateLimit({
   message: { error: 'Too many attempts — please try again in a few minutes' }
 });
 
+// Stricter limit for reset emails, so the endpoint can't be used to spam inboxes.
+const resetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many reset requests — please try again in an hour' }
+});
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_PASSWORD = 8;
+const RESET_MINUTES = 30;
+
+function validateNewPassword(password) {
+  if (typeof password !== 'string' || password.length < MIN_PASSWORD) {
+    throw new HttpError(400, `Password must be at least ${MIN_PASSWORD} characters`);
+  }
+  if (password.length > 200) throw new HttpError(400, 'Password is too long');
+  return password;
+}
 const GENDERS = ['male', 'female', 'other', 'prefer_not_to_say'];
 
 function signToken(id) {
@@ -45,10 +66,7 @@ router.post('/register', authLimiter, asyncHandler(async (req, res) => {
   const name = requiredString(req.body.name, 'name', { max: 100 });
   const email = requiredString(req.body.email, 'email', { max: 200 }).toLowerCase();
   if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Please enter a valid email');
-  const password = req.body.password;
-  if (typeof password !== 'string' || password.length < 8) {
-    throw new HttpError(400, 'Password must be at least 8 characters');
-  }
+  const password = validateNewPassword(req.body.password);
 
   if (await User.exists({ email })) throw new HttpError(400, 'Email already registered');
 
@@ -64,6 +82,66 @@ router.post('/login', authLimiter, asyncHandler(async (req, res) => {
     throw new HttpError(401, 'Invalid email or password');
   }
   res.json({ token: signToken(user._id), user: user.toPublicJSON() });
+}));
+
+// POST /api/auth/forgot-password { email }
+// Always answers the same way, so it can't be used to find out who has an account.
+router.post('/forgot-password', resetLimiter, asyncHandler(async (req, res) => {
+  const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Please enter a valid email');
+
+  const user = await User.findOne({ email });
+  if (user) {
+    const { token, hash } = createOneTimeToken();
+    user.passwordResetTokenHash = hash;
+    user.passwordResetExpires = new Date(Date.now() + RESET_MINUTES * 60 * 1000);
+    await user.save();
+
+    const link = `${config.appUrl}/reset-password?token=${token}`;
+    try {
+      await sendEmail({ to: user.email, toName: user.name, ...passwordResetEmail({ name: user.name, link, minutes: RESET_MINUTES }) });
+    } catch (err) {
+      console.error('[auth] reset email failed:', err.message);
+    }
+  }
+
+  res.json({ message: `If an account exists for ${email}, a reset link has been sent. It expires in ${RESET_MINUTES} minutes — check your spam folder too.` });
+}));
+
+// POST /api/auth/reset-password { token, password }
+router.post('/reset-password', authLimiter, asyncHandler(async (req, res) => {
+  const token = typeof req.body.token === 'string' ? req.body.token.trim() : '';
+  const password = validateNewPassword(req.body.password);
+  if (!/^[a-f0-9]{64}$/.test(token)) throw new HttpError(400, 'This reset link is invalid or has expired — please request a new one.');
+
+  const user = await User.findOne({
+    passwordResetTokenHash: hashToken(token),
+    passwordResetExpires: { $gt: new Date() }
+  }).select('+passwordResetTokenHash +passwordResetExpires');
+  if (!user) throw new HttpError(400, 'This reset link is invalid or has expired — please request a new one.');
+
+  user.password = password;              // hashed by the model; also sets passwordChangedAt
+  user.passwordResetTokenHash = undefined; // single use
+  user.passwordResetExpires = undefined;
+  await user.save();
+
+  // Signed in right away on this device; every other device is signed out.
+  res.json({ token: signToken(user._id), user: user.toPublicJSON() });
+}));
+
+// PUT /api/auth/password { currentPassword, newPassword } — change while signed in
+router.put('/password', protect, authLimiter, asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select('+password');
+  if (!(await user.matchPassword(req.body.currentPassword))) {
+    throw new HttpError(403, 'Current password is incorrect'); // 403, not 401: don't log the user out
+  }
+  const newPassword = validateNewPassword(req.body.newPassword);
+  if (newPassword === req.body.currentPassword) throw new HttpError(400, 'New password must be different from the current one');
+
+  user.password = newPassword;
+  await user.save();
+  // New token for this device; sessions on other devices stop working.
+  res.json({ token: signToken(user._id), message: 'Password changed. Other devices have been signed out.' });
 }));
 
 // GET /api/auth/me
