@@ -1,9 +1,15 @@
 const { DailySummary, WeeklySummary } = require('../../models/Intelligence');
+const Memory = require('../../models/Memory');
 const { addDays, getWeekYear } = require('../../utils/dateUtils');
 
 async function generateWeeklySummary(userId, weekYear, startDate, endDate) {
   const dailies = await DailySummary.find({ userId, date: { $gte: startDate, $lte: endDate } }).lean();
-  if (dailies.length === 0) return null;
+  if (dailies.length === 0) {
+    // Everything in this week was deleted: drop its summary so it isn't reprocessed again and again.
+    await WeeklySummary.deleteOne({ userId, weekYear });
+    await Memory.deleteOne({ userId, kind: 'weekly', refId: weekYear });
+    return null;
+  }
 
   const avg = (key) => {
     const vals = dailies.map(d => d.metrics?.[key]).filter(v => v != null);

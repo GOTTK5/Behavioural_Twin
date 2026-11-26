@@ -8,12 +8,13 @@ async function buildContext(user, userQuery, today) {
   const [latestWeek, recentDailies, knowledgePatterns, activeEpisodes, memories] = await Promise.all([
     WeeklySummary.findOne({ userId }).sort({ weekYear: -1 }).lean(),
     DailySummary.find({ userId }).sort({ date: -1 }).limit(7).lean(),
-    BehavioralKnowledge.find({ userId, ...currentPatternFilter(today) }).sort({ confidenceRank: -1, observedWeeks: -1 }).limit(5).lean(),
+    BehavioralKnowledge.find({ userId, ...currentPatternFilter(today) }).sort({ confidenceRank: -1, observedWeeks: -1 }).lean(),
     Episode.find({ userId, resolved: false }).sort({ startDate: -1 }).limit(3).lean(),
     searchMemories(userId, userQuery)
   ]);
 
   const todaySummary = recentDailies.find(d => d.date === today) || null;
+  const currentPatternTexts = new Set(knowledgePatterns.map(k => k.pattern));
 
   return {
     today,
@@ -24,9 +25,9 @@ async function buildContext(user, userQuery, today) {
     latestWeekLabel: latestWeek ? `${latestWeek.weekYear} (${latestWeek.startDate} to ${latestWeek.endDate})` : null,
     latestWeekSummary: latestWeek?.summary || null,
     dominantSignals: latestWeek?.dominantSignals || [],
-    behavioralPatterns: knowledgePatterns.map(k => `${k.pattern} — ${k.confidence} confidence, seen in ${k.observedWeeks} week(s)`),
+    behavioralPatterns: knowledgePatterns.slice(0, 5).map(k => `${k.pattern} — ${k.confidence} confidence, seen in ${k.observedWeeks} week(s)`),
     activeEpisodes: activeEpisodes.map(e => `${e.label} since ${e.startDate} (${e.severity})`),
-    relevantPatterns: memories.pattern,
+    relevantPatterns: memories.pattern.filter(t => currentPatternTexts.has(t)),
     similarPastWeeks: memories.weekly,
     relevantEpisodes: memories.episode
   };

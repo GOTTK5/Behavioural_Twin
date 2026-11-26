@@ -41,7 +41,8 @@ async function generateDailySummary(userId, date) {
   if (journal)   parts.push(`Journal: ${journal.text.substring(0, 100)}${journal.text.length > 100 ? '...' : ''}`);
   if (psychTest) parts.push(`Anxiety (GAD-7, ${psychTest.date}): ${psychTest.totalScore}/21 — ${psychTest.anxietyLevel}`);
 
-  const hasAnyData = Boolean(mood || journal || healthLog || tasks.length || psychTest);
+  // A carried-forward GAD-7 alone doesn't make a day "logged" — only the test day itself counts.
+  const hasAnyData = Boolean(mood || journal || healthLog || tasks.length || psychTest?.date === date);
 
   if (!hasAnyData) {
     await DailySummary.deleteOne({ userId, date });

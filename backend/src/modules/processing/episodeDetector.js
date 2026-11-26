@@ -89,6 +89,21 @@ function detectEpisodes(summaries, lastDate) {
   return detected;
 }
 
+const SEVERITY_RANK = { mild: 1, moderate: 2, severe: 3 };
+
+// How a newly detected streak updates an existing overlapping episode.
+// Never shrinks dates or severity, and never re-opens an episode from a re-run of an older week.
+function mergeEpisode(existing, ep) {
+  const startDate = ep.startDate < existing.startDate ? ep.startDate : existing.startDate;
+  const endDate   = ep.endDate > existing.endDate ? ep.endDate : existing.endDate;
+  const severity  = (SEVERITY_RANK[ep.severity] || 0) > (SEVERITY_RANK[existing.severity] || 0) ? ep.severity : existing.severity;
+  const extendsIt = ep.endDate >= existing.endDate;
+  const resolved  = Boolean(existing.resolvedByUser) || (extendsIt ? ep.resolved : existing.resolved);
+  const triggers  = [...new Set([...(existing.triggers || []), ...ep.triggers])];
+  const changed   = startDate !== existing.startDate || endDate !== existing.endDate || severity !== existing.severity;
+  return { startDate, endDate, severity, resolved, triggers, changed };
+}
+
 async function runEpisodeDetector(userId, endDate) {
   const summaries = await DailySummary.find({
     userId,
@@ -96,6 +111,7 @@ async function runEpisodeDetector(userId, endDate) {
   }).sort({ date: 1 }).lean();
 
   const detected = detectEpisodes(summaries, endDate);
+  const ongoingIds = [];
 
   for (const ep of detected) {
     const existing = await Episode.findOne({
@@ -106,24 +122,26 @@ async function runEpisodeDetector(userId, endDate) {
     }).sort({ startDate: 1 });
 
     if (!existing) {
-      await Episode.create({ userId, ...ep });
+      const created = await Episode.create({ userId, ...ep });
+      if (!created.resolved) ongoingIds.push(created._id);
       continue;
     }
 
-    const startDate = ep.startDate < existing.startDate ? ep.startDate : existing.startDate;
-    const endDate2  = ep.endDate > existing.endDate ? ep.endDate : existing.endDate;
-    const changed = startDate !== existing.startDate || endDate2 !== existing.endDate || ep.severity !== existing.severity;
-
-    existing.startDate = startDate;
-    existing.endDate   = endDate2;
-    existing.severity  = ep.severity;
-    existing.triggers  = [...new Set([...existing.triggers, ...ep.triggers])];
-    existing.resolved  = existing.resolvedByUser || ep.resolved;
-    if (changed) existing.embedded = false;
+    const m = mergeEpisode(existing, ep);
+    Object.assign(existing, { startDate: m.startDate, endDate: m.endDate, severity: m.severity, resolved: m.resolved, triggers: m.triggers });
+    if (m.changed) existing.embedded = false;
     await existing.save();
+    if (!existing.resolved) ongoingIds.push(existing._id);
   }
+
+  // An open episode that didn't continue up to this run's last day has ended
+  // (e.g. the user stopped logging), so close it instead of leaving it "active" forever.
+  await Episode.updateMany(
+    { userId, resolved: false, endDate: { $lt: endDate }, _id: { $nin: ongoingIds } },
+    { resolved: true, embedded: false }
+  );
 
   return detected;
 }
 
-module.exports = { runEpisodeDetector, detectEpisodes, EPISODE_RULES };
+module.exports = { runEpisodeDetector, detectEpisodes, mergeEpisode, EPISODE_RULES };
