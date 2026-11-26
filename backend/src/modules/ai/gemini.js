@@ -3,7 +3,7 @@
 const { config } = require('../../config/env');
 
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
-const TIMEOUT_MS = 30000;
+const TIMEOUT_MS = 20000;
 const EMBEDDING_DIMENSIONS = 768;
 
 class AIUnavailableError extends Error {}
@@ -14,6 +14,7 @@ function isConfigured() {
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const isOverloaded = (err) => err.status === 503 || err.status === 500 || err.status === 502;
+const isTimeout = (err) => err.name === 'TimeoutError' || err.name === 'AbortError';
 
 async function request(method, path, body, retries = 2) {
   for (let attempt = 0; ; attempt++) {
@@ -94,17 +95,19 @@ async function withModel(kind, fn) {
   try {
     return await fn(current);
   } catch (err) {
-    if (isOverloaded(err)) {
-      const ranked = await listModels()
+    if (isOverloaded(err) || isTimeout(err)) {
+      let ranked = await listModels()
         .then(models => (kind === 'chat' ? rankChatModels(models) : rankEmbeddingModels(models)))
         .catch(() => []);
+      // Too slow → try the lighter, faster models first.
+      if (isTimeout(err)) ranked = [...ranked.filter(n => /lite/.test(n)), ...ranked.filter(n => !/lite/.test(n))];
       for (const alt of ranked.filter(n => n !== current).slice(0, 2)) {
         try {
           const result = await fn(alt);
           console.warn(`[gemini] "${current}" overloaded — answered with "${alt}"`);
           return result;
         } catch (altErr) {
-          if (!isOverloaded(altErr) && altErr.status !== 404) throw altErr;
+          if (!isOverloaded(altErr) && !isTimeout(altErr) && altErr.status !== 404) throw altErr;
         }
       }
       throw err;
@@ -174,7 +177,7 @@ function describeError(err) {
   if (err.status === 404) return 'No usable Gemini model found for this key';
   if (isOverloaded(err)) return 'Google\'s AI servers are busy right now — please try again in a minute';
   if (err.status === 429) return 'Gemini free-tier quota reached — wait a minute (or a day if the daily limit is used up)';
-  if (err.name === 'TimeoutError') return 'Gemini did not answer in time';
+  if (isTimeout(err)) return 'Gemini is responding slowly right now — please try again in a minute';
   return err.message.slice(0, 200);
 }
 

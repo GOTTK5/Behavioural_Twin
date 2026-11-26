@@ -62,3 +62,21 @@ test('retries on 503 and falls back to another model when one stays overloaded',
   assert.equal(await g.generateChat({ systemPrompt: 's', message: 'hi' }), 'Backup answer');
   assert.equal(busyCalls, 3); // 1 try + 2 retries
 });
+
+test('a model that is too slow falls back to a lighter one', async () => {
+  process.env.GEMINI_MODEL = 'gemini-slow';
+  delete require.cache[require.resolve('../src/modules/ai/gemini')];
+  const g = require('../src/modules/ai/gemini');
+  global.fetch = async (url) => {
+    const json = (status, body) => ({ ok: status < 300, status, json: async () => body, text: async () => JSON.stringify(body) });
+    if (url.includes('gemini-slow:generateContent')) { const e = new Error('timeout'); e.name = 'TimeoutError'; throw e; }
+    if (url.includes('/models?')) return json(200, { models: [
+      { name: 'models/gemini-slow', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-9.0-flash', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-9.0-flash-lite', supportedGenerationMethods: ['generateContent'] }
+    ] });
+    if (url.includes('gemini-9.0-flash-lite:generateContent')) return json(200, { candidates: [{ content: { parts: [{ text: 'Fast answer' }] } }] });
+    return json(503, {});
+  };
+  assert.equal(await g.generateChat({ systemPrompt: 's', message: 'hi' }), 'Fast answer');
+});
