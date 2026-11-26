@@ -49,8 +49,7 @@ async function seed() {
       { upsert: true });
 
     await HealthLog.findOneAndUpdate({ userId, date }, {
-      sleepHours: +sleepHours.toFixed(1), steps, exerciseMinutes: exercise, screenTimeHours: +screenTime.toFixed(1),
-      source: { sleep: 'manual', steps: 'manual' }
+      sleepHours: +sleepHours.toFixed(1), steps, exerciseMinutes: exercise, screenTimeHours: +screenTime.toFixed(1)
     }, { upsert: true });
 
     if (!(await Task.exists({ userId, date }))) {

@@ -10,7 +10,7 @@ async function protect(req, res, next) {
   let decoded;
   try {
     decoded = jwt.verify(auth.slice(7), config.jwtSecret);
-    if (decoded.purpose) throw new Error('wrong token type'); // e.g. an OAuth state token
+    if (decoded.purpose) throw new Error('wrong token type');
     req.user = await User.findById(decoded.id);
   } catch {
     return res.status(401).json({ error: 'Session expired — please sign in again' });

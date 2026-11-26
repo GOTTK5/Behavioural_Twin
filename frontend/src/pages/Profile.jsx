@@ -10,7 +10,6 @@ const TIMEZONES = (() => {
 export default function Profile({ onLogout }) {
   const [user,     setUser]     = useState(null);
   const [form,     setForm]     = useState({ name: '', age: '', weight: '', gender: 'prefer_not_to_say', timezone: 'Asia/Kolkata' });
-  const [google,   setGoogle]   = useState({ connected: false, available: false });
   const [status,   setStatus]   = useState({});
   const [busy,     setBusy]     = useState({});
   const [deletePw, setDeletePw] = useState('');
@@ -29,18 +28,6 @@ export default function Profile({ onLogout }) {
         timezone: data.user.timezone || 'Asia/Kolkata'
       });
     }).catch(err => show('page', false, errorMessage(err)));
-
-    api.get('/google/status').then(({ data }) => setGoogle(data)).catch(() => {});
-
-    const params = new URLSearchParams(window.location.search);
-    const result = params.get('google');
-    if (result === 'connected') {
-      setGoogle(g => ({ ...g, connected: true }));
-      show('google', true, 'Google Fit connected');
-    } else if (result === 'error') {
-      show('google', false, 'Could not connect Google Fit — please try again.');
-    }
-    if (result) window.history.replaceState({}, '', '/profile');
   }, []);
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
@@ -51,7 +38,6 @@ export default function Profile({ onLogout }) {
       await fn();
     } catch (err) {
       show(key, false, errorMessage(err));
-      if (err.response?.data?.needsReconnect) setGoogle(g => ({ ...g, connected: false }));
     } finally {
       setBusy(b => ({ ...b, [key]: false }));
     }
@@ -76,23 +62,6 @@ export default function Profile({ onLogout }) {
     setToken(data.token);
     setPw({ current: '', next: '', confirm: '' });
     show('password', true, `✓ ${data.message}`);
-  });
-
-  const connectGoogle = () => act('google', async () => {
-    const { data } = await api.get('/google/auth-url');
-    window.location.href = data.url;
-  });
-
-  const syncGoogleToday = () => act('google', async () => {
-    const { data } = await api.post('/google/sync', {});
-    const { sleepHours, steps } = data.synced;
-    show('google', true, `Synced — sleep: ${sleepHours ?? 'no data'}${sleepHours != null ? 'h' : ''}, steps: ${steps ?? 'no data'}`);
-  });
-
-  const disconnectGoogle = () => act('google', async () => {
-    await api.post('/google/disconnect');
-    setGoogle(g => ({ ...g, connected: false }));
-    show('google', true, 'Disconnected');
   });
 
   const runBatch = () => act('batch', async () => {
@@ -169,27 +138,6 @@ export default function Profile({ onLogout }) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {google.available && (
-            <div className="card">
-              <div className="card-title">Google Fit — auto sync</div>
-              <div className="muted" style={{ marginBottom: 16 }}>
-                Syncs sleep and steps every night. Values you type in by hand are never overwritten.
-              </div>
-              {google.connected ? (
-                <div>
-                  <div style={{ color: 'var(--success)', fontWeight: 600, marginBottom: 12 }}>✓ Connected</div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button className="btn btn-secondary btn-sm" onClick={syncGoogleToday} disabled={busy.google}>Sync today now</button>
-                    <button className="btn btn-secondary btn-sm" onClick={disconnectGoogle} disabled={busy.google}>Disconnect</button>
-                  </div>
-                </div>
-              ) : (
-                <button className="btn btn-primary" onClick={connectGoogle} disabled={busy.google}>Connect Google Fit</button>
-              )}
-              <Status k="google" />
-            </div>
-          )}
-
           <div className="card">
             <div className="card-title">Account</div>
             <div className="muted" style={{ marginBottom: 4 }}>Email</div>

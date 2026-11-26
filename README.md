@@ -104,17 +104,6 @@ Without these, the reset link is printed in the backend console during local dev
 
 ---
 
-## Google Fit (optional)
-
-1. In [Google Cloud Console](https://console.cloud.google.com), create a project and enable the **Fitness API**.
-2. Create OAuth credentials (Web application) with the redirect URI `https://<your-backend>/api/google/callback`.
-3. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `BACKEND_URL` (or `GOOGLE_REDIRECT_URI`).
-4. In the app: **Profile → Connect Google Fit**.
-
-Steps and sleep sync every night. Values you enter by hand are never overwritten. **Note:** Google is winding down the Fitness REST API — check its current status before relying on it.
-
----
-
 ## API
 
 All endpoints except register/login need `Authorization: Bearer <token>`. Dates are `YYYY-MM-DD` in the user's timezone and default to today.
@@ -134,7 +123,6 @@ All endpoints except register/login need `Authorization: Bearer <token>`. Dates 
 | POST | `/api/dashboard/trigger-batch` | Run the weekly analysis now |
 | GET · PATCH | `/api/insights/patterns` · `episodes` · `weekly-history` · `episodes/:id/resolve` | Insights |
 | GET · POST · DELETE | `/api/chat/history` · `/api/chat` · `/api/chat/history` | Twin chat |
-| GET · POST | `/api/google/status` · `auth-url` · `sync` · `disconnect` | Google Fit |
 | GET | `/api/health` | Health check (used by hosts) |
 
 ---
@@ -146,12 +134,12 @@ backend/
   index.js                     entry point (config check, DB, cron, server)
   src/app.js                   Express app, security middleware, error handler, serves frontend build
   src/config/                  env validation, MongoDB connection
-  src/routes/                  auth, ingest, dashboard, insights, chat, google
+  src/routes/                  auth, ingest, dashboard, insights, chat
   src/modules/processing/      dailySummary, weeklySummary, correlation, episodeDetector, weeklyBatch
   src/modules/conversation/    contextEngine (RAG), llmCall (Twin persona)
   src/modules/ai/gemini.js     Gemini chat + embeddings
   src/modules/memory/          vector store on MongoDB
-  src/jobs/scheduler.js        hourly job: nightly finalize + weekly analysis per user timezone
+  src/jobs/scheduler.js        hourly job: weekly analysis per user timezone
   scripts/                     seed.js, runBatch.js
   test/                        unit tests (node --test)
 frontend/                      React app (Dashboard, Daily Log, Twin, Insights, Profile)
@@ -171,4 +159,4 @@ frontend/                      React app (Dashboard, Daily Log, Twin, Insights, 
 ## Roadmap
 
 - **Next:** email reminders to log, PDF weekly reports, journal sentiment analysis.
-- **Later:** behavioral predictions, mobile app (Health Connect / HealthKit instead of Google Fit), richer personalization.
+- **Later:** behavioral predictions, mobile app with automatic sleep/step sync (Health Connect / HealthKit), richer personalization.

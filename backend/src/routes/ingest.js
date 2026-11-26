@@ -119,7 +119,6 @@ router.get('/tasks', asyncHandler(async (req, res) => {
   res.json({ tasks });
 }));
 
-// Manual sleep/steps are marked 'manual' so Google Fit never overwrites them.
 router.post('/health', asyncHandler(async (req, res) => {
   const date = resolveDate(req.user, req.body.date);
   const fields = {
@@ -133,8 +132,6 @@ router.post('/health', asyncHandler(async (req, res) => {
   for (const [key, value] of Object.entries(fields)) {
     if (value !== undefined) update[key] = value;
   }
-  if ('sleepHours' in update) update['source.sleep'] = update.sleepHours == null ? null : 'manual';
-  if ('steps' in update)      update['source.steps'] = update.steps == null ? null : 'manual';
   if (!Object.keys(update).length) throw new HttpError(400, 'Nothing to save');
 
   const log = await HealthLog.findOneAndUpdate({ userId: req.user._id, date }, update, { upsert: true, new: true });

@@ -44,7 +44,6 @@ function createApp() {
   app.use('/api/chat',      require('./routes/chat'));
   app.use('/api/dashboard', require('./routes/dashboard'));
   app.use('/api/insights',  require('./routes/insights'));
-  app.use('/api/google',    require('./routes/google'));
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 

@@ -12,11 +12,6 @@ const userSchema = new mongoose.Schema({
   gender:   { type: String, enum: ['male', 'female', 'other', 'prefer_not_to_say'] },
   timezone: { type: String, default: 'Asia/Kolkata' }, // IANA name, e.g. "Asia/Kolkata"
 
-  // Google Fit OAuth — never returned to the client
-  googleAccessToken:  { type: String, select: false },
-  googleRefreshToken: { type: String, select: false },
-  googleConnected:    { type: Boolean, default: false },
-
   // Password reset (only a hash of the emailed token is stored)
   passwordResetTokenHash: { type: String, select: false },
   passwordResetExpires:   { type: Date, select: false },
@@ -54,7 +49,6 @@ userSchema.methods.toPublicJSON = function () {
     weight: this.weight,
     gender: this.gender,
     timezone: this.timezone,
-    googleConnected: this.googleConnected,
     createdAt: this.createdAt
   };
 };

@@ -25,7 +25,6 @@ const config = {
   get jwtSecret()      { return process.env.JWT_SECRET; },
   get jwtExpiresIn()   { return process.env.JWT_EXPIRES_IN || '7d'; },
   get frontendUrl()    { return process.env.FRONTEND_URL || ''; },
-  get backendUrl()     { return process.env.BACKEND_URL || `http://localhost:${Number(process.env.PORT) || 5000}`; },
   get defaultTimezone(){ return process.env.DEFAULT_TIMEZONE || 'Asia/Kolkata'; },
   get enableCron()     { return process.env.ENABLE_CRON !== 'false'; },
   // Public URL of the website, used in emailed links. Render sets RENDER_EXTERNAL_URL itself.
@@ -45,15 +44,6 @@ const config = {
     get apiKey()         { return process.env.GEMINI_API_KEY || ''; },
     get chatModel()      { return process.env.GEMINI_MODEL || 'gemini-flash-latest'; },
     get embeddingModel() { return process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001'; }
-  },
-
-  google: {
-    get clientId()     { return process.env.GOOGLE_CLIENT_ID || ''; },
-    get clientSecret() { return process.env.GOOGLE_CLIENT_SECRET || ''; },
-    get redirectUri()  {
-      return process.env.GOOGLE_REDIRECT_URI || `${config.backendUrl}/api/google/callback`;
-    },
-    get enabled()      { return Boolean(this.clientId && this.clientSecret); }
   }
 };
 

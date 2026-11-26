@@ -1,11 +1,9 @@
 const cron = require('node-cron');
 const User = require('../models/User');
-const { generateDailySummary } = require('../modules/processing/dailySummary');
 const { runWeeklyBatchForUser } = require('../modules/processing/weeklyBatch');
-const { syncDay } = require('../services/googleFit');
 const { config } = require('../config/env');
 const { DailySummary, WeeklySummary } = require('../models/Intelligence');
-const { getLocalDateString, getLocalHour, addDays, getLastCompletedWeekRange, getWeekRange } = require('../utils/dateUtils');
+const { getLastCompletedWeekRange, getWeekRange } = require('../utils/dateUtils');
 
 // Next week to process: the last completed week if unprocessed, else any stale week.
 async function weeklyBatchDue(user, now) {
@@ -21,28 +19,12 @@ async function weeklyBatchDue(user, now) {
   return stale ? getWeekRange(stale.startDate) : null;
 }
 
-// Hourly, per user timezone: finalize yesterday after midnight, then run any due weekly batch.
+// Hourly: run any weekly batch that is due, in each user's timezone.
 async function hourlyTick(now = new Date()) {
-  const users = await User.find({}).select('+googleAccessToken +googleRefreshToken');
+  const users = await User.find({});
 
   for (const user of users) {
-    const tz = user.timezone || config.defaultTimezone;
-    const localHour = getLocalHour(tz, now);
-    const today = getLocalDateString(tz, now);
-
     try {
-      if (localHour === 0) {
-        const yesterday = addDays(today, -1);
-        if (user.googleConnected && config.google.enabled) {
-          try {
-            await syncDay(user, yesterday);
-          } catch (err) {
-            console.error(`[cron] Google Fit sync failed for ${user._id}:`, err.message);
-          }
-        }
-        await generateDailySummary(user._id, yesterday);
-      }
-
       const dueRange = await weeklyBatchDue(user, now);
       if (dueRange) {
         const result = await runWeeklyBatchForUser(user, dueRange);
@@ -69,7 +51,7 @@ function startCronJobs() {
   };
   cron.schedule('5 * * * *', tick);
   setTimeout(tick, 15000); // catch up after a restart
-  console.log('[cron] scheduled hourly — daily finalize after local midnight, weekly batch once each week ends (each user\'s timezone)');
+  console.log('[cron] scheduled hourly — weekly batch once each week ends (each user\'s timezone)');
 }
 
 module.exports = { startCronJobs, hourlyTick, weeklyBatchDue };

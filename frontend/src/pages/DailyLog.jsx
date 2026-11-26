@@ -28,7 +28,6 @@ export default function DailyLog() {
   const [journal,   setJournal]   = useState('');
   const [health,    setHealth]    = useState(EMPTY_HEALTH);
   const [savedHealth, setSavedHealth] = useState(EMPTY_HEALTH);
-  const [healthSource, setHealthSource] = useState({});
   const [tasks,     setTasks]     = useState([]);
   const [newTask,   setNewTask]   = useState('');
   const [gad7,      setGad7]      = useState(Array(7).fill(null));
@@ -51,7 +50,6 @@ export default function DailyLog() {
       for (const f of HEALTH_FIELDS) h[f.key] = data.health?.[f.key] ?? '';
       setHealth(h);
       setSavedHealth(h);
-      setHealthSource(data.health?.source || {});
       setTasks(data.tasks || []);
       setPsychDue(data.psychTestDue);
       setErrors({});
@@ -86,7 +84,7 @@ export default function DailyLog() {
 
   const saveJournal = () => journal.trim() && run('journal', () => api.post('/ingest/journal', { date, text: journal }));
 
-  // Send only changed fields so Google Fit values aren't marked manual.
+  // Send only the fields the user changed.
   const healthChanges = {};
   for (const f of HEALTH_FIELDS) {
     if (String(health[f.key]) !== String(savedHealth[f.key])) {
@@ -97,9 +95,8 @@ export default function DailyLog() {
   const healthDirty = Object.keys(healthChanges).length > 0;
 
   const saveHealth = () => run('health', async () => {
-    const { data } = await api.post('/ingest/health', { date, ...healthChanges });
+    await api.post('/ingest/health', { date, ...healthChanges });
     setSavedHealth(health);
-    setHealthSource(data.log?.source || {});
   });
 
   async function addTask() {
@@ -254,10 +251,7 @@ export default function DailyLog() {
             <div className="grid-2" style={{ marginBottom: 12 }}>
               {HEALTH_FIELDS.map(f => (
                 <div className="form-group" key={f.key}>
-                  <label>
-                    {f.label}
-                    {healthSource[f.key === 'sleepHours' ? 'sleep' : f.key] === 'google_fit' && <span style={{ color: 'var(--accent2)' }}> · Google Fit</span>}
-                  </label>
+                  <label>{f.label}</label>
                   <input type="number" step={f.step} min="0" max={f.max} value={health[f.key]} placeholder={f.placeholder}
                     onChange={e => setHealth(h => ({ ...h, [f.key]: e.target.value }))} />
                 </div>

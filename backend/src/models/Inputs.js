@@ -34,11 +34,6 @@ const healthLogSchema = new mongoose.Schema({
   steps:           { type: Number, default: null },
   exerciseMinutes: { type: Number, default: null },
   screenTimeHours: { type: Number, default: null },
-  source: {
-    // null = no value yet; 'manual' values are never overwritten by Google Fit
-    sleep:    { type: String, enum: ['manual', 'google_fit', null], default: null },
-    steps:    { type: String, enum: ['manual', 'google_fit', null], default: null }
-  },
   createdAt: { type: Date, default: Date.now }
 });
 healthLogSchema.index({ userId: 1, date: 1 }, { unique: true });
