@@ -23,7 +23,7 @@ const chatLimiter = rateLimit({
 const HISTORY_TURNS = 10;
 
 router.get('/history', asyncHandler(async (req, res) => {
-  const latest = await ChatMessage.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(50).lean();
+  const latest = await ChatMessage.find({ userId: req.user._id }).sort({ _id: -1 }).limit(50).lean();
   res.json({ messages: latest.reverse() });
 }));
 
@@ -31,7 +31,7 @@ router.post('/', chatLimiter, asyncHandler(async (req, res) => {
   const message = requiredString(req.body.message, 'message', { max: 2000 });
   const userId = req.user._id;
 
-  const recent = await ChatMessage.find({ userId }).sort({ createdAt: -1 }).limit(HISTORY_TURNS * 2).lean();
+  const recent = await ChatMessage.find({ userId }).sort({ _id: -1 }).limit(HISTORY_TURNS * 2).lean();
   const history = recent.reverse().map(m => ({ role: m.role, content: m.content }));
 
   const contextPackage = await buildContext(req.user, message, userToday(req.user));
@@ -47,9 +47,11 @@ router.post('/', chatLimiter, asyncHandler(async (req, res) => {
     throw new HttpError(502, `Twin could not answer: ${describeError(err)}`);
   }
 
+  // Sorted by _id, which follows insertion order; timestamps set together so they agree.
+  const now = Date.now();
   await ChatMessage.insertMany([
-    { userId, role: 'user', content: message },
-    { userId, role: 'assistant', content: reply, createdAt: new Date(Date.now() + 1) }
+    { userId, role: 'user', content: message, createdAt: new Date(now) },
+    { userId, role: 'assistant', content: reply, createdAt: new Date(now + 1) }
   ]);
 
   res.json({

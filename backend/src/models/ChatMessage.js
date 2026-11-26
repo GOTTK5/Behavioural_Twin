@@ -8,6 +8,6 @@ const chatMessageSchema = new mongoose.Schema({
 });
 
 // Fast lookup of a user's recent messages in order
-chatMessageSchema.index({ userId: 1, createdAt: 1 });
+chatMessageSchema.index({ userId: 1, _id: -1 });
 
 module.exports = mongoose.model('ChatMessage', chatMessageSchema);
