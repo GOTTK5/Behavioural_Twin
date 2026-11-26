@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import api, { errorMessage } from '../services/api';
 
-// Opened from the emailed link: /reset-password?token=...
 export default function ResetPassword({ onLogin }) {
   const token = new URLSearchParams(window.location.search).get('token') || '';
   const [password, setPassword] = useState('');
@@ -19,7 +18,7 @@ export default function ResetPassword({ onLogin }) {
     setLoading(true);
     try {
       const { data } = await api.post('/auth/reset-password', { token, password });
-      window.history.replaceState({}, '', '/dashboard'); // drop the token from the address bar
+      window.history.replaceState({}, '', '/dashboard');
       onLogin(data.token);
     } catch (err) {
       setError(errorMessage(err));

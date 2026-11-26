@@ -1,6 +1,4 @@
-// Sends email through Brevo's HTTPS API (free: 300 emails/day).
-// An HTTP API is used instead of SMTP because many free hosts — including
-// Render's free tier — block outbound SMTP ports.
+// Brevo HTTPS API (Render's free tier blocks SMTP).
 
 const { config } = require('../config/env');
 

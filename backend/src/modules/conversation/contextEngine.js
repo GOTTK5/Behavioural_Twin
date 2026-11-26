@@ -2,8 +2,6 @@ const { DailySummary, WeeklySummary, BehavioralKnowledge, Episode } = require('.
 const { searchMemories } = require('../memory/vectorStore');
 const { currentPatternFilter } = require('../processing/correlation');
 
-// Gathers everything Twin needs to answer one message:
-// recent structured data from MongoDB + semantically relevant memories.
 async function buildContext(user, userQuery, today) {
   const userId = user._id;
 
@@ -34,7 +32,6 @@ async function buildContext(user, userQuery, today) {
   };
 }
 
-// Human-readable snapshot: per-day lines for the last 7 logged days plus trends.
 function buildCurrentState(recentDailies) {
   if (!recentDailies.length) return '';
 

@@ -2,8 +2,6 @@ const { Mood, Journal, Task, HealthLog, PsychTest } = require('../../models/Inpu
 const { DailySummary } = require('../../models/Intelligence');
 const { addDays } = require('../../utils/dateUtils');
 
-// Pure function: turns one day's raw inputs into signals (used by episode
-// detection and pattern discovery). Exported for tests.
 function buildSignals({ mood, healthLog, taskCompletionRate, anxietyLevel }) {
   const signals = [];
   if (mood?.score != null && mood.score <= 3)                         signals.push('low_mood');
@@ -19,8 +17,7 @@ function buildSignals({ mood, healthLog, taskCompletionRate, anxietyLevel }) {
 }
 
 async function generateDailySummary(userId, date) {
-  // GAD-7 is taken weekly and asks about the last two weeks, so the most
-  // recent test from the past 7 days describes this day too.
+  // Latest GAD-7 from the past 7 days applies to this day.
   const [mood, journal, healthLog, psychTest, tasks] = await Promise.all([
     Mood.findOne({ userId, date }),
     Journal.findOne({ userId, date }),
@@ -46,7 +43,6 @@ async function generateDailySummary(userId, date) {
 
   const hasAnyData = Boolean(mood || journal || healthLog || tasks.length || psychTest);
 
-  // Nothing logged — don't leave an empty summary behind (it would show as a gap of nulls).
   if (!hasAnyData) {
     await DailySummary.deleteOne({ userId, date });
     return null;

@@ -1,5 +1,3 @@
-// Google Fit sync (optional). NOTE: Google is winding down the Fitness REST API —
-// check its status before relying on it in production.
 
 const { google } = require('googleapis');
 const User = require('../models/User');
@@ -15,8 +13,7 @@ function isInvalidGrant(err) {
   return /invalid_grant/i.test(err?.message || '') || err?.response?.data?.error === 'invalid_grant';
 }
 
-// Fetches steps and sleep for one local calendar day.
-// Sleep is attributed to the day the user WOKE UP (session ended that day).
+// Sleep counts toward the day the user woke up.
 async function fetchGoogleFitData(user, dateStr) {
   const withTokens = user.googleRefreshToken !== undefined
     ? user
@@ -27,7 +24,6 @@ async function fetchGoogleFitData(user, dateStr) {
     access_token: withTokens.googleAccessToken,
     refresh_token: withTokens.googleRefreshToken
   });
-  // Persist refreshed access tokens so we don't refresh on every call
   oauth2Client.on('tokens', (tokens) => {
     const update = {};
     if (tokens.access_token) update.googleAccessToken = tokens.access_token;
@@ -62,9 +58,9 @@ async function fetchGoogleFitData(user, dateStr) {
   try {
     const sleepRes = await fitness.users.sessions.list({
       userId: 'me',
-      startTime: new Date(startMs - 12 * 3600000).toISOString(), // sessions starting the evening before
+      startTime: new Date(startMs - 12 * 3600000).toISOString(),
       endTime: new Date(endMs).toISOString(),
-      activityType: 72 // sleep
+      activityType: 72
     });
     const sessions = (sleepRes.data.session || []).filter(s => {
       const end = parseInt(s.endTimeMillis, 10);
@@ -82,7 +78,6 @@ async function fetchGoogleFitData(user, dateStr) {
   return { steps, sleepHours };
 }
 
-// Never overwrites a value with null, and never overwrites a manual entry.
 async function safeUpdateHealthLog(userId, date, data) {
   const existing = await HealthLog.findOne({ userId, date });
   const update = {};
@@ -100,7 +95,6 @@ async function safeUpdateHealthLog(userId, date, data) {
   return HealthLog.findOneAndUpdate({ userId, date }, update, { upsert: true, new: true });
 }
 
-// Sync one day; marks the user disconnected when Google revoked access.
 async function syncDay(user, date) {
   try {
     const data = await fetchGoogleFitData(user, date);

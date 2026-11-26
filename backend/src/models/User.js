@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
 
   // Profile
   age:      { type: Number, min: 1, max: 120 },
-  weight:   { type: Number, min: 1, max: 500 }, // kg
+  weight:   { type: Number, min: 1, max: 500 },
   gender:   { type: String, enum: ['male', 'female', 'other', 'prefer_not_to_say'] },
   timezone: { type: String, default: 'Asia/Kolkata' }, // IANA name, e.g. "Asia/Kolkata"
 

@@ -6,7 +6,7 @@ const browserTimezone = (() => {
 })();
 
 export default function Login({ onLogin }) {
-  const [mode, setMode]       = useState('login'); // 'login' | 'register' | 'forgot'
+  const [mode, setMode]       = useState('login');
   const [info, setInfo]       = useState('');
   const [form, setForm]       = useState({ name: '', email: '', password: '', age: '', weight: '', gender: 'prefer_not_to_say' });
   const [error, setError]     = useState('');

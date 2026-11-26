@@ -7,7 +7,6 @@ const { HttpError, asyncHandler } = require('../utils/http');
 const router = express.Router();
 router.use(protect);
 
-// GET /api/insights/patterns
 router.get('/patterns', asyncHandler(async (req, res) => {
   const patterns = await BehavioralKnowledge.find({ userId: req.user._id })
     .sort({ confidenceRank: -1, observedWeeks: -1 })
@@ -15,13 +14,11 @@ router.get('/patterns', asyncHandler(async (req, res) => {
   res.json({ patterns });
 }));
 
-// GET /api/insights/episodes
 router.get('/episodes', asyncHandler(async (req, res) => {
   const episodes = await Episode.find({ userId: req.user._id }).sort({ startDate: -1 }).select('-embedded');
   res.json({ episodes });
 }));
 
-// PATCH /api/insights/episodes/:id/resolve
 router.patch('/episodes/:id/resolve', asyncHandler(async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) throw new HttpError(404, 'Episode not found');
   const episode = await Episode.findOneAndUpdate(
@@ -33,7 +30,6 @@ router.patch('/episodes/:id/resolve', asyncHandler(async (req, res) => {
   res.json({ episode });
 }));
 
-// GET /api/insights/weekly-history
 router.get('/weekly-history', asyncHandler(async (req, res) => {
   const weeks = await WeeklySummary.find({ userId: req.user._id }).sort({ weekYear: -1 }).limit(20);
   res.json({ weeks });

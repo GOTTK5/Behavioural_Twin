@@ -1,4 +1,3 @@
-// Small helpers so every route handles errors and validation the same way.
 
 class HttpError extends Error {
   constructor(status, message, extra = {}) {
@@ -8,12 +7,10 @@ class HttpError extends Error {
   }
 }
 
-// Wraps an async route so rejected promises reach the error handler
-// (Express 4 does not do this on its own — the request would hang).
+// Express 4 doesn't forward async errors on its own.
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-// Optional number in [min, max]. Returns undefined when not provided,
-// null when explicitly cleared, and throws on invalid input.
+// undefined = not sent, null = cleared
 function optionalNumber(value, field, { min = -Infinity, max = Infinity, integer = false } = {}) {
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;

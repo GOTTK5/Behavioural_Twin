@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// Same-origin by default (backend serves the built app, or CRA proxies in dev).
-// Set REACT_APP_API_URL only when the API lives on a different domain.
+// Set REACT_APP_API_URL only if the API is on another domain.
 const api = axios.create({ baseURL: `${process.env.REACT_APP_API_URL || ''}/api` });
 
 const TOKEN_KEY = 'twin_token';
@@ -16,8 +15,7 @@ api.interceptors.request.use(config => {
   return config;
 });
 
-// Only a 401 from OUR auth (expired/invalid session) logs the user out.
-// The App listens for this event — no hard page reload needed.
+// A 401 from our API means the session expired.
 api.interceptors.response.use(
   res => res,
   err => {
@@ -31,7 +29,6 @@ api.interceptors.response.use(
   }
 );
 
-// Human-friendly message from any API error.
 export function errorMessage(err, fallback = 'Something went wrong — please try again.') {
   return err?.response?.data?.error || (err?.request && !err?.response ? 'Cannot reach the server.' : fallback);
 }

@@ -7,10 +7,7 @@ const { config } = require('../config/env');
 const { DailySummary, WeeklySummary } = require('../models/Intelligence');
 const { getLocalDateString, getLocalHour, addDays, getLastCompletedWeekRange, getWeekRange } = require('../utils/dateUtils');
 
-// Returns the week to process next, or null:
-//   1. the last completed week, if it has data but was never processed
-//      (e.g. the server was asleep or down on Monday morning), else
-//   2. an already-processed past week marked stale because a day in it was edited.
+// Next week to process: the last completed week if unprocessed, else any stale week.
 async function weeklyBatchDue(user, now) {
   const range = getLastCompletedWeekRange(user.timezone || config.defaultTimezone, now);
   const [processed, hasData] = await Promise.all([
@@ -24,11 +21,7 @@ async function weeklyBatchDue(user, now) {
   return stale ? getWeekRange(stale.startDate) : null;
 }
 
-// Runs every hour and acts per user, in THEIR timezone:
-//   • 00:xx local → finalize yesterday (Google Fit sync + daily summary)
-//   • first tick after Sunday ends (local) → weekly batch for the week that just ended,
-//     and on any later tick if it was missed (catches up after downtime/sleep).
-// Running after midnight means Sunday is always included in its week.
+// Hourly, per user timezone: finalize yesterday after midnight, then run any due weekly batch.
 async function hourlyTick(now = new Date()) {
   const users = await User.find({}).select('+googleAccessToken +googleRefreshToken');
 
@@ -50,7 +43,6 @@ async function hourlyTick(now = new Date()) {
         await generateDailySummary(user._id, yesterday);
       }
 
-      // Runs after the midnight block above, so Sunday's Google Fit data is in first.
       const dueRange = await weeklyBatchDue(user, now);
       if (dueRange) {
         const result = await runWeeklyBatchForUser(user, dueRange);
@@ -65,7 +57,7 @@ async function hourlyTick(now = new Date()) {
 function startCronJobs() {
   let running = false;
   const tick = async () => {
-    if (running) return; // never overlap runs
+    if (running) return;
     running = true;
     try {
       await hourlyTick();
@@ -76,7 +68,7 @@ function startCronJobs() {
     }
   };
   cron.schedule('5 * * * *', tick);
-  setTimeout(tick, 15000); // catch up shortly after a (re)start
+  setTimeout(tick, 15000); // catch up after a restart
   console.log('[cron] scheduled hourly — daily finalize after local midnight, weekly batch once each week ends (each user\'s timezone)');
 }
 

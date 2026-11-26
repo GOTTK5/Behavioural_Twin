@@ -31,7 +31,6 @@ export default function App() {
     return () => window.removeEventListener('twin:logout', onLogout);
   }, []);
 
-  // The emailed reset link works whether or not someone is signed in on this device.
   if (resetting) return <ResetPassword onLogin={login} />;
   if (!token) return <Login onLogin={login} />;
 

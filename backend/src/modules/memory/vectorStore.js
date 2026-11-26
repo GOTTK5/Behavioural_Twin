@@ -12,7 +12,6 @@ function cosineSimilarity(a, b) {
   return na && nb ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
 }
 
-// Stores (or refreshes) one memory. Returns true when embedded.
 async function upsertMemory(userId, kind, refId, text) {
   if (!isConfigured() || !text) return false;
   try {
@@ -33,8 +32,6 @@ async function deleteMemory(userId, kind, refId) {
   await Memory.deleteOne({ userId, kind, refId: String(refId) });
 }
 
-// Embeds the query once and ranks every memory kind against it.
-// Returns { weekly: [text], pattern: [text], episode: [text] }.
 async function searchMemories(userId, query, limits = { weekly: 3, pattern: 3, episode: 2 }) {
   const empty = { weekly: [], pattern: [], episode: [] };
   if (!isConfigured()) return empty;

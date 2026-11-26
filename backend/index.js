@@ -8,8 +8,7 @@ const { createApp } = require('./src/app');
 function start() {
   loadConfig();
 
-  // Open the port first so the host sees the app as running even while the
-  // database is still connecting (or misconfigured — see /api/health).
+  // Listen before the DB connects so /api/health can report DB problems.
   const server = createApp().listen(config.port, () => {
     console.log(`Twin backend running on port ${config.port}`);
   });

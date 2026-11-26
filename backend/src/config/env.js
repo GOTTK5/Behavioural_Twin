@@ -1,5 +1,3 @@
-// Central place for configuration. Fails fast at startup when a required
-// variable is missing, instead of crashing later inside a request.
 
 const REQUIRED = ['MONGO_URI', 'JWT_SECRET'];
 

@@ -1,8 +1,4 @@
-// Runs the weekly pipeline by hand.
-// Usage (from backend/):
-//   npm run batch                         → last completed week, all users
-//   npm run batch -- 2026-06-22           → the week containing that date, all users
-//   npm run batch -- 2026-06-22 me@x.com  → that week, one user
+// Usage: npm run batch [-- YYYY-MM-DD [email]]  (default: last completed week, all users)
 
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');

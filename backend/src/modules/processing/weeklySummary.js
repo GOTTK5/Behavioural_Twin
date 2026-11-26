@@ -20,8 +20,6 @@ async function generateWeeklySummary(userId, weekYear, startDate, endDate) {
     anxietyScore:       avg('anxietyScore')
   };
 
-  // Compare against the week immediately before this one (not "the latest other week",
-  // which would be wrong when backfilling older weeks).
   const prevWeekDoc = await WeeklySummary.findOne({ userId, weekYear: getWeekYear(addDays(startDate, -7)) }).lean();
 
   const changes = {};

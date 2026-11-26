@@ -34,7 +34,7 @@ function BigChart({ data, color, label, unit }) {
   const formatted = data.map(d => ({
     ...d,
     value: d.value != null ? (unit === '%' ? +(d.value * 100).toFixed(1) : d.value) : null,
-    date:  d.date?.slice(5) // MM-DD
+    date:  d.date?.slice(5)
   }));
   return (
     <ResponsiveContainer width="100%" height={220}>
@@ -86,7 +86,6 @@ export default function Dashboard() {
         <p>Your behavioral overview — last 30 days</p>
       </div>
 
-      {/* Today's completion bar */}
       {today && (
         <div className="card section today-bar">
           <div>
@@ -111,7 +110,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 7 stat tiles — change = latest value vs. average of the 7 values before it */}
       <div className="stat-grid">
         {METRICS.map(m => {
           const vals   = data?.trends?.[m.key]?.filter(d => d.value != null) || [];
@@ -138,7 +136,6 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Big expanded chart */}
       <div className="card section">
         <div className="flex-between" style={{ marginBottom: 16 }}>
           <div className="section-title">{activeMetric.icon} {activeMetric.label} trend</div>
@@ -149,7 +146,6 @@ export default function Dashboard() {
           : <div className="muted">No {activeMetric.label.toLowerCase()} data in the last 30 days — log it on the Daily Log page.</div>}
       </div>
 
-      {/* Patterns + active episodes */}
       <div className="grid-2">
         <div className="card">
           <div className="card-title">Behavioral patterns</div>

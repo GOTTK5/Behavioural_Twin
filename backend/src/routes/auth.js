@@ -20,7 +20,6 @@ const authLimiter = rateLimit({
   message: { error: 'Too many attempts — please try again in a few minutes' }
 });
 
-// Stricter limit for reset emails, so the endpoint can't be used to spam inboxes.
 const resetLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 5,
@@ -61,7 +60,6 @@ function parseProfile(body) {
   return profile;
 }
 
-// POST /api/auth/register
 router.post('/register', authLimiter, asyncHandler(async (req, res) => {
   const name = requiredString(req.body.name, 'name', { max: 100 });
   const email = requiredString(req.body.email, 'email', { max: 200 }).toLowerCase();
@@ -74,7 +72,6 @@ router.post('/register', authLimiter, asyncHandler(async (req, res) => {
   res.status(201).json({ token: signToken(user._id), user: user.toPublicJSON() });
 }));
 
-// POST /api/auth/login
 router.post('/login', authLimiter, asyncHandler(async (req, res) => {
   const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   const user = email ? await User.findOne({ email }).select('+password') : null;
@@ -84,8 +81,7 @@ router.post('/login', authLimiter, asyncHandler(async (req, res) => {
   res.json({ token: signToken(user._id), user: user.toPublicJSON() });
 }));
 
-// POST /api/auth/forgot-password { email }
-// Always answers the same way, so it can't be used to find out who has an account.
+// Same response whether or not the account exists.
 router.post('/forgot-password', resetLimiter, asyncHandler(async (req, res) => {
   const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   if (!EMAIL_RE.test(email)) throw new HttpError(400, 'Please enter a valid email');
@@ -108,7 +104,6 @@ router.post('/forgot-password', resetLimiter, asyncHandler(async (req, res) => {
   res.json({ message: `If an account exists for ${email}, a reset link has been sent. It expires in ${RESET_MINUTES} minutes — check your spam folder too.` });
 }));
 
-// POST /api/auth/reset-password { token, password }
 router.post('/reset-password', authLimiter, asyncHandler(async (req, res) => {
   const token = typeof req.body.token === 'string' ? req.body.token.trim() : '';
   const password = validateNewPassword(req.body.password);
@@ -120,36 +115,31 @@ router.post('/reset-password', authLimiter, asyncHandler(async (req, res) => {
   }).select('+passwordResetTokenHash +passwordResetExpires');
   if (!user) throw new HttpError(400, 'This reset link is invalid or has expired — please request a new one.');
 
-  user.password = password;              // hashed by the model; also sets passwordChangedAt
-  user.passwordResetTokenHash = undefined; // single use
+  user.password = password;
+  user.passwordResetTokenHash = undefined;
   user.passwordResetExpires = undefined;
   await user.save();
 
-  // Signed in right away on this device; every other device is signed out.
   res.json({ token: signToken(user._id), user: user.toPublicJSON() });
 }));
 
-// PUT /api/auth/password { currentPassword, newPassword } — change while signed in
 router.put('/password', protect, authLimiter, asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select('+password');
   if (!(await user.matchPassword(req.body.currentPassword))) {
-    throw new HttpError(403, 'Current password is incorrect'); // 403, not 401: don't log the user out
+    throw new HttpError(403, 'Current password is incorrect'); // not 401: would log the user out
   }
   const newPassword = validateNewPassword(req.body.newPassword);
   if (newPassword === req.body.currentPassword) throw new HttpError(400, 'New password must be different from the current one');
 
   user.password = newPassword;
   await user.save();
-  // New token for this device; sessions on other devices stop working.
   res.json({ token: signToken(user._id), message: 'Password changed. Other devices have been signed out.' });
 }));
 
-// GET /api/auth/me
 router.get('/me', protect, (req, res) => {
   res.json({ user: req.user.toPublicJSON() });
 });
 
-// PUT /api/auth/profile
 router.put('/profile', protect, asyncHandler(async (req, res) => {
   const update = parseProfile(req.body);
   if (req.body.name !== undefined) update.name = requiredString(req.body.name, 'name', { max: 100 });
@@ -157,14 +147,12 @@ router.put('/profile', protect, asyncHandler(async (req, res) => {
   res.json({ user: user.toPublicJSON() });
 }));
 
-// GET /api/auth/export — download everything stored about the user as JSON
 router.get('/export', protect, asyncHandler(async (req, res) => {
   const data = await exportUserData(req.user._id);
   res.setHeader('Content-Disposition', 'attachment; filename="twin-data-export.json"');
   res.json({ exportedAt: new Date().toISOString(), user: req.user.toPublicJSON(), ...data });
 }));
 
-// DELETE /api/auth/account — permanently deletes the user and all their data
 router.delete('/account', protect, asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select('+password');
   if (!(await user.matchPassword(req.body?.password))) {

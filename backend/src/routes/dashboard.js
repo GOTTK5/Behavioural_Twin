@@ -13,7 +13,6 @@ const { addDays, getWeekYear } = require('../utils/dateUtils');
 const router = express.Router();
 router.use(protect);
 
-// GET /api/dashboard/overview?days=30
 router.get('/overview', asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const days = clampInt(req.query.days, 30, 7, 365);
@@ -52,13 +51,11 @@ router.get('/overview', asyncHandler(async (req, res) => {
   });
 }));
 
-// GET /api/dashboard/weekly
 router.get('/weekly', asyncHandler(async (req, res) => {
   const weeks = await WeeklySummary.find({ userId: req.user._id }).sort({ weekYear: -1 }).limit(12);
   res.json({ weeks });
 }));
 
-// GET /api/dashboard/today — today's log status
 router.get('/today', asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const today = userToday(req.user);
@@ -80,7 +77,6 @@ router.get('/today', asyncHandler(async (req, res) => {
   });
 }));
 
-// POST /api/dashboard/trigger-batch — rebuild summaries/patterns on demand
 const batchLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   limit: 3,
@@ -90,7 +86,6 @@ const batchLimiter = rateLimit({
 
 router.post('/trigger-batch', batchLimiter, asyncHandler(async (req, res) => {
   const today = userToday(req.user);
-  // Refresh the last 7 days of daily summaries first, then process the last completed week
   for (let i = 0; i < 7; i++) await generateDailySummary(req.user._id, addDays(today, -i));
   const result = await runWeeklyBatchForUser(req.user);
   res.json({ success: true, ...result });

@@ -10,8 +10,6 @@ function userToday(user) {
   return getLocalDateString(userTimezone(user));
 }
 
-// Validates a client-supplied date; defaults to the user's "today".
-// Future dates are rejected so nobody can log tomorrow's mood.
 function resolveDate(user, date) {
   const today = userToday(user);
   if (date === undefined || date === null || date === '') return today;

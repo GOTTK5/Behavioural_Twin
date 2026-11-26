@@ -55,7 +55,6 @@ function createApp() {
     app.get('*', (req, res) => res.sendFile(path.join(buildDir, 'index.html')));
   }
 
-  // Central error handler — never leaks internal details to the client.
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
     if (err instanceof HttpError) {

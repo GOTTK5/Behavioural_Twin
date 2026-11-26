@@ -10,8 +10,6 @@ function episodeText(ep) {
   return `${ep.label} from ${ep.startDate} to ${ep.endDate}. Severity: ${ep.severity}. Triggers: ${(ep.triggers || []).join(', ')}.`;
 }
 
-// Stores anything not yet embedded in semantic memory (also retries past failures).
-// `refreshWeek` is re-embedded even if already stored, because it was just regenerated.
 async function embedPending(userId, refreshWeek = null) {
   const stored = new Set(await Memory.distinct('refId', { userId, kind: 'weekly' }));
   const weekly = await WeeklySummary.find({ userId }).sort({ weekYear: -1 }).limit(52);
@@ -36,8 +34,6 @@ async function embedPending(userId, refreshWeek = null) {
   }
 }
 
-// Full weekly pipeline for one user. `range` defaults to the user's last
-// completed Monday–Sunday week.
 async function runWeeklyBatchForUser(user, range) {
   const { startDate, endDate, weekYear } = range || getLastCompletedWeekRange(user.timezone);
 

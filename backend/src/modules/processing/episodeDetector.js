@@ -1,7 +1,6 @@
 const { DailySummary, Episode } = require('../../models/Intelligence');
 const { addDays } = require('../../utils/dateUtils');
 
-// Look back far enough that a streak crossing a week boundary is seen whole.
 const WINDOW_DAYS = 28;
 
 const EPISODE_RULES = [
@@ -9,7 +8,7 @@ const EPISODE_RULES = [
     type: 'low_mood_streak',
     label: 'Low mood streak',
     check: (signals) => signals.includes('low_mood'),
-    threshold: 4, // consecutive days
+    threshold: 4,
     severity: (count) => count >= 7 ? 'severe' : count >= 5 ? 'moderate' : 'mild'
   },
   {
@@ -29,7 +28,6 @@ const EPISODE_RULES = [
   {
     type: 'burnout',
     label: 'Potential burnout',
-    // Low mood and low productivity on the same days
     check: (signals) => signals.includes('low_mood') && signals.includes('low_productivity'),
     threshold: 3,
     severity: (count) => count >= 5 ? 'severe' : 'moderate'
@@ -43,9 +41,7 @@ const EPISODE_RULES = [
   }
 ];
 
-// Pure function. `summaries` must be sorted by date ascending.
-// A streak only continues on consecutive calendar days — a day with no
-// summary at all breaks it. A streak still running on `lastDate` is ongoing.
+// `summaries` sorted ascending; streaks need consecutive days.
 function detectEpisodes(summaries, lastDate) {
   const detected = [];
 
@@ -102,7 +98,6 @@ async function runEpisodeDetector(userId, endDate) {
   const detected = detectEpisodes(summaries, endDate);
 
   for (const ep of detected) {
-    // Merge with an existing episode of the same type that overlaps or touches this one
     const existing = await Episode.findOne({
       userId,
       episodeType: ep.episodeType,

@@ -11,7 +11,6 @@ const { userToday } = require('../utils/userDate');
 const router = express.Router();
 router.use(protect);
 
-// The Gemini free tier has low per-minute limits; protect the shared quota.
 const chatLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 8,
@@ -23,13 +22,11 @@ const chatLimiter = rateLimit({
 
 const HISTORY_TURNS = 10;
 
-// GET /api/chat/history — the most recent 50 messages, oldest first
 router.get('/history', asyncHandler(async (req, res) => {
   const latest = await ChatMessage.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(50).lean();
   res.json({ messages: latest.reverse() });
 }));
 
-// POST /api/chat
 router.post('/', chatLimiter, asyncHandler(async (req, res) => {
   const message = requiredString(req.body.message, 'message', { max: 2000 });
   const userId = req.user._id;
@@ -65,7 +62,6 @@ router.post('/', chatLimiter, asyncHandler(async (req, res) => {
   });
 }));
 
-// DELETE /api/chat/history
 router.delete('/history', asyncHandler(async (req, res) => {
   await ChatMessage.deleteMany({ userId: req.user._id });
   res.json({ success: true });

@@ -1,6 +1,4 @@
-// Creates a demo user with 35 days of realistic synthetic data, then runs the
-// weekly pipeline so patterns and episodes exist immediately.
-// Usage (from backend/):  npm run seed
+// Creates test@twin.ai with 35 days of synthetic data and runs the weekly analysis.
 
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
@@ -63,7 +61,7 @@ async function seed() {
       }));
     }
 
-    if (weekdayIndex(date) === 6) { // Sundays
+    if (weekdayIndex(date) === 6) {
       const total = moodScore <= 3 ? 12 + Math.round(Math.random() * 6) : 3 + Math.round(Math.random() * 5);
       const answers = Array.from({ length: 7 }, (_, q) => Math.min(3, Math.floor(total / 7) + (q < total % 7 ? 1 : 0)));
       await PsychTest.findOneAndUpdate({ userId, weekYear: getWeekYear(date) }, {

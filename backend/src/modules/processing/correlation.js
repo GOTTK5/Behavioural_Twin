@@ -2,14 +2,10 @@ const ss = require('simple-statistics');
 const { DailySummary, BehavioralKnowledge } = require('../../models/Intelligence');
 const { addDays } = require('../../utils/dateUtils');
 
-// Correlations are computed over a rolling window ending at the processed
-// week. 7 days is too few points to say anything; 28 gives real signal.
 const WINDOW_DAYS = 28;
 const MIN_PAIRS = 7;
 const MIN_ABS_R = 0.4;
 
-// Labels are neutral; direction wording comes from the sign of r so the
-// sentence never contradicts the number.
 const METRIC_PAIRS = [
   ['sleepHours',         'moodScore',          'sleep and mood'],
   ['sleepHours',         'taskCompletionRate', 'sleep and productivity'],
@@ -31,8 +27,7 @@ function describePattern(label, correlation) {
   return `Higher ${nameA} is associated with ${relation} ${nameB} (r=${correlation.toFixed(2)})`;
 }
 
-// GAD-7 is taken once a week and carried forward for 7 days, so its daily values
-// are not independent points. Correlations involving it are capped at 'low'.
+// GAD-7 is weekly and carried forward daily, so its correlations are capped at 'low'.
 const WEEKLY_METRICS = new Set(['anxietyScore']);
 
 function confidenceFor(absR, n, metricA, metricB) {
@@ -42,7 +37,6 @@ function confidenceFor(absR, n, metricA, metricB) {
   return 'low';
 }
 
-// Pure function: summaries → correlation results. Exported for tests.
 function computeCorrelations(summaries) {
   const results = [];
   for (const [metricA, metricB, label] of METRIC_PAIRS) {
@@ -53,7 +47,7 @@ function computeCorrelations(summaries) {
 
     const xs = pairs.map(p => p[0]);
     const ys = pairs.map(p => p[1]);
-    if (new Set(xs).size < 3 || new Set(ys).size < 3) continue; // too little variation to mean anything
+    if (new Set(xs).size < 3 || new Set(ys).size < 3) continue;
 
     let r;
     try { r = ss.sampleCorrelation(xs, ys); } catch { continue; }
@@ -78,7 +72,7 @@ async function updateKnowledgeTable(userId, correlationResults, weekYear, startD
     const existing = await BehavioralKnowledge.findOne({ userId, sourceA: r.metricA, sourceB: r.metricB });
 
     if (existing) {
-      if (existing.pattern !== r.pattern) existing.embedded = false; // text changed → re-embed
+      if (existing.pattern !== r.pattern) existing.embedded = false;
       existing.correlation    = r.correlation;
       existing.confidence     = r.confidence;
       existing.confidenceRank = CONFIDENCE_RANK[r.confidence];
@@ -106,7 +100,6 @@ async function updateKnowledgeTable(userId, correlationResults, weekYear, startD
   }
 }
 
-// A pattern is "current" if it was re-confirmed in a recent weekly run.
 const CURRENT_PATTERN_DAYS = 35;
 function currentPatternFilter(today) {
   return { lastSeen: { $gte: new Date(`${addDays(today, -CURRENT_PATTERN_DAYS)}T00:00:00Z`) } };

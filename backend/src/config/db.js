@@ -24,8 +24,7 @@ function explain(err) {
 let lastError = null;
 const getDbError = () => lastError;
 
-// Connects in the background and keeps retrying, so the web server stays up
-// and /api/health can report what is wrong instead of the app crashing.
+// Retries in the background instead of crashing the server.
 function connectMongo(onConnected) {
   const attempt = async () => {
     try {

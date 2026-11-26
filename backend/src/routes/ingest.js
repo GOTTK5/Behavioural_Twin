@@ -12,12 +12,9 @@ const { addDays, getWeekYear, getWeekRange } = require('../utils/dateUtils');
 const router = express.Router();
 router.use(protect);
 
-// Keep the day's summary in sync with every change, so the dashboard and
-// Twin always see fresh data instead of waiting for a nightly job.
 async function refreshSummary(userId, date) {
   try {
     await generateDailySummary(userId, date);
-    // If this day's week was already analysed, mark it for re-processing.
     await WeeklySummary.updateOne({ userId, weekYear: getWeekYear(date) }, { stale: true });
   } catch (err) {
     console.error('[ingest] daily summary refresh failed:', err.message);
@@ -33,7 +30,6 @@ function assertObjectId(id) {
   if (!mongoose.isValidObjectId(id)) throw new HttpError(404, 'Not found');
 }
 
-// GET /api/ingest/day?date=YYYY-MM-DD — everything logged for one day
 router.get('/day', asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const date = resolveDate(req.user, req.query.date);
@@ -56,7 +52,6 @@ router.get('/day', asyncHandler(async (req, res) => {
   });
 }));
 
-// ── Mood ──────────────────────────────────────────────
 router.post('/mood', asyncHandler(async (req, res) => {
   const date = resolveDate(req.user, req.body.date);
   const score = optionalNumber(req.body.score, 'score', { min: 1, max: 9, integer: true });
@@ -74,7 +69,6 @@ router.get('/mood', asyncHandler(async (req, res) => {
   res.json({ moods });
 }));
 
-// ── Journal ───────────────────────────────────────────
 router.post('/journal', asyncHandler(async (req, res) => {
   const date = resolveDate(req.user, req.body.date);
   const text = requiredString(req.body.text, 'text', { max: 20000 });
@@ -90,7 +84,6 @@ router.get('/journal', asyncHandler(async (req, res) => {
   res.json({ journals });
 }));
 
-// ── Tasks ─────────────────────────────────────────────
 router.post('/task', asyncHandler(async (req, res) => {
   const date = resolveDate(req.user, req.body.date);
   const title = requiredString(req.body.title, 'title', { max: 300 });
@@ -126,9 +119,7 @@ router.get('/tasks', asyncHandler(async (req, res) => {
   res.json({ tasks });
 }));
 
-// ── Health Log (manual) ───────────────────────────────
-// Only fields present in the body are changed. Sending null clears a field.
-// Manually entered sleep/steps are marked 'manual' so Google Fit never overwrites them.
+// Manual sleep/steps are marked 'manual' so Google Fit never overwrites them.
 router.post('/health', asyncHandler(async (req, res) => {
   const date = resolveDate(req.user, req.body.date);
   const fields = {
@@ -157,7 +148,6 @@ router.get('/health', asyncHandler(async (req, res) => {
   res.json({ logs });
 }));
 
-// ── Psychology Test (GAD-7) ───────────────────────────
 const GAD7_QUESTIONS = [
   'Feeling nervous, anxious, or on edge',
   'Not being able to stop or control worrying',
@@ -178,7 +168,7 @@ router.get('/psych-test/questions', (req, res) => {
 
 router.post('/psych-test', asyncHandler(async (req, res) => {
   const date = resolveDate(req.user, req.body.date);
-  const { answers } = req.body; // e.g. [0,1,2,3,2,1,0]
+  const { answers } = req.body;
   if (!Array.isArray(answers) || answers.length !== 7 || !answers.every(a => Number.isInteger(a) && a >= 0 && a <= 3)) {
     throw new HttpError(400, 'answers must be 7 whole numbers between 0 and 3');
   }
@@ -195,7 +185,6 @@ router.post('/psych-test', asyncHandler(async (req, res) => {
   );
   await User.updateOne({ _id: req.user._id }, { lastPsychTestDate: new Date(`${date}T00:00:00Z`) });
 
-  // The test result applies to this day and the following 6 (see dailySummary).
   for (let i = 0; i < 7; i++) {
     const d = addDays(date, i);
     if (d > userToday(req.user)) break;

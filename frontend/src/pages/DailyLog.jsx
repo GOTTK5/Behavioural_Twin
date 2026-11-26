@@ -69,7 +69,6 @@ export default function DailyLog() {
     setTimeout(() => setSaved(s => ({ ...s, [key]: false })), 2000);
   }
 
-  // Runs an API action with saving/error state for one card.
   async function run(key, fn) {
     setSaving(s => ({ ...s, [key]: true }));
     setErrors(e => ({ ...e, [key]: null }));
@@ -87,7 +86,7 @@ export default function DailyLog() {
 
   const saveJournal = () => journal.trim() && run('journal', () => api.post('/ingest/journal', { date, text: journal }));
 
-  // Only send fields the user actually changed, so untouched Google Fit values stay synced.
+  // Send only changed fields so Google Fit values aren't marked manual.
   const healthChanges = {};
   for (const f of HEALTH_FIELDS) {
     if (String(health[f.key]) !== String(savedHealth[f.key])) {
@@ -169,7 +168,6 @@ export default function DailyLog() {
       )}
 
       <div className="grid-2" style={{ gap: 20 }}>
-        {/* LEFT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           <div className="card">
@@ -249,7 +247,6 @@ export default function DailyLog() {
           {saved.gad7 && <div className="success-text">✓ Anxiety check saved</div>}
         </div>
 
-        {/* RIGHT COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           <div className="card">

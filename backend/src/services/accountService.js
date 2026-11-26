@@ -10,7 +10,6 @@ const USER_COLLECTIONS = [
   ChatMessage, Memory
 ];
 
-// Everything stored about one user, for "download my data".
 async function exportUserData(userId) {
   const out = {};
   for (const Model of USER_COLLECTIONS) {

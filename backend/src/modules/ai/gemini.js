@@ -1,9 +1,4 @@
-// Thin client for the Google Gemini API (free tier available via Google AI Studio).
-// Uses plain fetch (Node 18+) so there is no SDK version to keep up with.
-//
-// Google retires model versions regularly. If the configured model is gone
-// (404), the client asks the API which models this key can use and switches
-// to the best available one automatically, so the app keeps working.
+// Gemini REST client. Falls back to another available model if one is retired or overloaded.
 
 const { config } = require('../../config/env');
 
@@ -20,7 +15,6 @@ function isConfigured() {
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const isOverloaded = (err) => err.status === 503 || err.status === 500 || err.status === 502;
 
-// Retries briefly when Google is overloaded (503) — usually clears in seconds.
 async function request(method, path, body, retries = 2) {
   for (let attempt = 0; ; attempt++) {
     try {
@@ -51,7 +45,6 @@ async function requestOnce(method, path, body) {
   return res.json();
 }
 
-// ── Model discovery ───────────────────────────────────
 let modelListCache = null;
 
 async function listModels() {
@@ -67,8 +60,7 @@ async function listModels() {
   return models;
 }
 
-// Higher version number first; stable before preview; "flash" (fast, free-tier friendly)
-// before "pro"; skip specialised variants that can't hold a normal chat.
+// Prefer stable flash models, newest first; skip non-chat variants.
 function rankChatModels(models) {
   const SKIP = /(image|tts|audio|live|vision|embedding|aqa|thinking-exp|robotics|computer-use|native)/i;
   const version = (name) => parseFloat((name.match(/gemini-(\d+(?:\.\d+)?)/) || [])[1] || 0);
@@ -78,10 +70,10 @@ function rankChatModels(models) {
     .filter(n => n.startsWith('gemini') && !SKIP.test(n))
     .sort((a, b) => {
       const score = (n) =>
-        (/flash/.test(n) ? 0 : 10) +          // prefer flash
-        (/lite/.test(n) ? 1 : 0) +            // full flash over lite
-        (/preview|exp/.test(n) ? 5 : 0) +     // stable over preview
-        (/-\d{3}$|-\d{2}-\d{4}$/.test(n) ? 0.5 : 0); // aliases over pinned snapshots
+        (/flash/.test(n) ? 0 : 10) +
+        (/lite/.test(n) ? 1 : 0) +
+        (/preview|exp/.test(n) ? 5 : 0) +
+        (/-\d{3}$|-\d{2}-\d{4}$/.test(n) ? 0.5 : 0);
       return score(a) - score(b) || version(b) - version(a);
     });
 }
@@ -95,10 +87,7 @@ function rankEmbeddingModels(models) {
 
 const active = { chat: null, embedding: null };
 
-// Calls fn(model).
-//  • model not found (retired) → switch permanently to the best available model
-//  • model overloaded (503) even after retries → answer this one request with
-//    another available model, but keep the preferred one for next time
+// 404 → switch model permanently; 503 → use another model for this request only.
 async function withModel(kind, fn) {
   const configured = kind === 'chat' ? config.gemini.chatModel : config.gemini.embeddingModel;
   const current = active[kind] || configured;
@@ -134,8 +123,6 @@ async function withModel(kind, fn) {
   }
 }
 
-// ── Public API ────────────────────────────────────────
-
 // history: [{ role: 'user' | 'assistant', content }]
 async function generateChat({ systemPrompt, history = [], message }) {
   const contents = [
@@ -170,7 +157,6 @@ async function embed(text, taskType = 'RETRIEVAL_DOCUMENT') {
   return values;
 }
 
-// Small live check used by /api/health?ai=check
 async function checkAI() {
   if (!isConfigured()) return { ok: false, error: 'GEMINI_API_KEY is not set' };
   try {
@@ -181,7 +167,6 @@ async function checkAI() {
   }
 }
 
-// Plain-language reason for an AI failure (never includes the key).
 function describeError(err) {
   if (err instanceof AIUnavailableError) return 'GEMINI_API_KEY is not set';
   if (err.status === 400 && /API key not valid|API_KEY_INVALID/i.test(err.message)) return 'GEMINI_API_KEY is invalid — create a new key in Google AI Studio';

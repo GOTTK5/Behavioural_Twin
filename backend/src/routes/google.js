@@ -24,20 +24,18 @@ function frontendRedirect(res, status) {
   res.redirect(`${config.frontendUrl || ''}/profile?google=${status}`);
 }
 
-// GET /api/google/auth-url
 router.get('/auth-url', protect, requireGoogleConfigured, (req, res) => {
-  // Signed, short-lived state so the callback can trust which user is connecting.
+  // Signed state so the callback can trust the user id.
   const state = jwt.sign({ id: req.user._id.toString(), purpose: 'google_oauth' }, config.jwtSecret, { expiresIn: '10m' });
   const url = getOAuthClient().generateAuthUrl({
     access_type: 'offline',
-    prompt: 'consent', // always return a refresh token
+    prompt: 'consent',
     scope: SCOPES,
     state
   });
   res.json({ url });
 });
 
-// GET /api/google/callback — Google redirects here after consent
 router.get('/callback', requireGoogleConfigured, async (req, res) => {
   try {
     const { code, state, error } = req.query;
@@ -58,7 +56,6 @@ router.get('/callback', requireGoogleConfigured, async (req, res) => {
   }
 });
 
-// POST /api/google/disconnect
 router.post('/disconnect', protect, asyncHandler(async (req, res) => {
   await User.updateOne({ _id: req.user._id }, {
     $unset: { googleAccessToken: 1, googleRefreshToken: 1 },
@@ -67,7 +64,6 @@ router.post('/disconnect', protect, asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
-// POST /api/google/sync { date? } — sync one day (defaults to today)
 router.post('/sync', protect, requireGoogleConfigured, asyncHandler(async (req, res) => {
   if (!req.user.googleConnected) throw new HttpError(400, 'Google Fit is not connected');
   const date = resolveDate(req.user, req.body.date);
@@ -77,13 +73,12 @@ router.post('/sync', protect, requireGoogleConfigured, asyncHandler(async (req, 
     await generateDailySummary(req.user._id, date);
     res.json({ log, synced: data });
   } catch (err) {
-    // 409, not 401: a Google problem must not log the user out of Twin
+    // 409, not 401, so the user stays signed in
     if (err.needsReconnect) throw new HttpError(409, 'Google Fit access expired — please reconnect.', { needsReconnect: true });
     throw err;
   }
 }));
 
-// GET /api/google/status
 router.get('/status', protect, (req, res) => {
   res.json({ connected: Boolean(req.user.googleConnected), available: config.google.enabled });
 });

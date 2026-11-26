@@ -11,7 +11,7 @@ export default function Profile({ onLogout }) {
   const [user,     setUser]     = useState(null);
   const [form,     setForm]     = useState({ name: '', age: '', weight: '', gender: 'prefer_not_to_say', timezone: 'Asia/Kolkata' });
   const [google,   setGoogle]   = useState({ connected: false, available: false });
-  const [status,   setStatus]   = useState({});   // { key: { ok, text } }
+  const [status,   setStatus]   = useState({});
   const [busy,     setBusy]     = useState({});
   const [deletePw, setDeletePw] = useState('');
   const [pw,       setPw]       = useState({ current: '', next: '', confirm: '' });
@@ -73,7 +73,7 @@ export default function Profile({ onLogout }) {
     if (pw.next.length < 8) return show('password', false, 'New password must be at least 8 characters');
     if (pw.next !== pw.confirm) return show('password', false, 'The two new passwords do not match');
     const { data } = await api.put('/auth/password', { currentPassword: pw.current, newPassword: pw.next });
-    setToken(data.token); // keep this device signed in
+    setToken(data.token);
     setPw({ current: '', next: '', confirm: '' });
     show('password', true, `✓ ${data.message}`);
   });

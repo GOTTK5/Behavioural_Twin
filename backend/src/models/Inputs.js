@@ -1,16 +1,14 @@
 const mongoose = require('mongoose');
 
-// ── Mood ──────────────────────────────────────────────
 const moodSchema = new mongoose.Schema({
   userId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  date:      { type: String, required: true }, // YYYY-MM-DD
+  date:      { type: String, required: true },
   score:     { type: Number, min: 1, max: 9, required: true },
   text:      { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
 moodSchema.index({ userId: 1, date: 1 }, { unique: true });
 
-// ── Journal ───────────────────────────────────────────
 const journalSchema = new mongoose.Schema({
   userId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   date:      { type: String, required: true },
@@ -19,10 +17,9 @@ const journalSchema = new mongoose.Schema({
 });
 journalSchema.index({ userId: 1, date: 1 }, { unique: true });
 
-// ── Task ──────────────────────────────────────────────
 const taskSchema = new mongoose.Schema({
   userId:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  date:        { type: String, required: true }, // date task was created
+  date:        { type: String, required: true },
   title:       { type: String, required: true },
   done:        { type: Boolean, default: false },
   completedAt: { type: Date },
@@ -30,14 +27,13 @@ const taskSchema = new mongoose.Schema({
 });
 taskSchema.index({ userId: 1, date: 1 });
 
-// ── Health Log (sleep, steps, exercise, screen time) ──
 const healthLogSchema = new mongoose.Schema({
   userId:          { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   date:            { type: String, required: true },
-  sleepHours:      { type: Number, default: null },   // hours
-  steps:           { type: Number, default: null },   // count
-  exerciseMinutes: { type: Number, default: null },   // minutes
-  screenTimeHours: { type: Number, default: null },   // hours
+  sleepHours:      { type: Number, default: null },
+  steps:           { type: Number, default: null },
+  exerciseMinutes: { type: Number, default: null },
+  screenTimeHours: { type: Number, default: null },
   source: {
     // null = no value yet; 'manual' values are never overwritten by Google Fit
     sleep:    { type: String, enum: ['manual', 'google_fit', null], default: null },
@@ -47,14 +43,12 @@ const healthLogSchema = new mongoose.Schema({
 });
 healthLogSchema.index({ userId: 1, date: 1 }, { unique: true });
 
-// ── Psychology Test (GAD-7 Anxiety scale) ─────────────
-// GAD-7: 7 questions, each scored 0-3. Total 0-21.
-// 0-4 minimal, 5-9 mild, 10-14 moderate, 15-21 severe
+// GAD-7: 7 questions scored 0-3 (total 0-21)
 const psychTestSchema = new mongoose.Schema({
   userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   date:     { type: String, required: true },
   weekYear: { type: String, required: true }, // e.g. "2026-W24"
-  answers:  [{ question: String, score: Number }], // 7 answers
+  answers:  [{ question: String, score: Number }],
   totalScore:    { type: Number, required: true },
   anxietyLevel:  { type: String, enum: ['minimal', 'mild', 'moderate', 'severe'] },
   createdAt:     { type: Date, default: Date.now }

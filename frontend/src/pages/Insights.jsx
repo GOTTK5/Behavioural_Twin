@@ -53,7 +53,6 @@ export default function Insights() {
 
       {error && <div className="error-text section">{error}</div>}
 
-      {/* Stats row */}
       <div className="grid-4" style={{ marginBottom: 28 }}>
         <div className="stat-tile">
           <div className="stat-label">Patterns found</div>
@@ -75,7 +74,6 @@ export default function Insights() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {[
           { key: 'patterns', label: `Patterns (${patterns.length})` },
@@ -90,7 +88,6 @@ export default function Insights() {
         ))}
       </div>
 
-      {/* Patterns tab */}
       {tab === 'patterns' && (
         <div>
           {patterns.length === 0 && (
@@ -128,7 +125,6 @@ export default function Insights() {
         </div>
       )}
 
-      {/* Episodes tab */}
       {tab === 'episodes' && (
         <div>
           {episodes.length === 0 && (
@@ -182,7 +178,6 @@ export default function Insights() {
         </div>
       )}
 
-      {/* Weekly history tab */}
       {tab === 'weeks' && (
         <div>
           {weeks.length === 0 && (
